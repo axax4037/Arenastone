@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>山石診所 | 智慧庫存管理系統</title>
+    <title>山石 | 智慧庫存管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -56,7 +56,8 @@
 
     <!-- 主內容區 -->
     <main id="mainContent" class="max-w-6xl mx-auto px-4 py-6">
-        <!-- 儀表板 -->
+        
+        <!-- 🌟 補回分頁 1：首頁儀表板與總覽 -->
         <div id="dashboardView" class="space-y-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow">
@@ -102,11 +103,11 @@
                 </div>
             </div>
 
-            <!-- 品項列表 (一體化免彈窗設計) -->
+            <!-- 品項列表 -->
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
-        <!-- 掃描頁面 -->
+        <!-- 🌟 補回分頁 2：掃描作業頁面 -->
         <div id="scannerView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>掃碼作業</h2>
@@ -134,7 +135,6 @@
                     <p class="text-green-600 font-semibold">掃描成功：<span id="scannedCode"></span></p>
                 </div>
                 
-                <!-- 掃碼表單優化小標籤說明提示 -->
                 <div id="scanForm" class="hidden mt-4 space-y-3 p-4 bg-blue-50 rounded-lg border">
                     <h3 class="font-bold text-slate-700">填寫表單明細</h3>
                     <div>
@@ -162,7 +162,7 @@
             </div>
         </div>
 
-        <!-- 手動作業頁面 -->
+        <!-- 🌟 補回分頁 3：手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用辦理</h2>
@@ -208,7 +208,7 @@
             </div>
         </div>
 
-        <!-- 報表頁面 -->
+        <!-- 🌟 補回分頁 4：報表狀態分析頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態分析</h2>
@@ -216,6 +216,28 @@
             </div>
         </div>
     </main>
+
+    <!-- 底部導航列 -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+        <div class="max-w-6xl mx-auto flex justify-around py-2">
+            <button onclick="switchTab('dashboard')" class="nav-item active flex flex-col items-center py-2 px-4">
+                <i class="fas fa-home text-xl mb-1"></i>
+                <span class="text-xs">首頁</span>
+            </button>
+            <button onclick="switchTab('scanner')" class="nav-item flex flex-col items-center py-2 px-4">
+                <i class="fas fa-barcode text-xl mb-1"></i>
+                <span class="text-xs">掃碼</span>
+            </button>
+            <button onclick="switchTab('manual')" class="nav-item flex flex-col items-center py-2 px-4">
+                <i class="fas fa-edit text-xl mb-1"></i>
+                <span class="text-xs">手動作業</span>
+            </button>
+            <button onclick="switchTab('report')" class="nav-item flex flex-col items-center py-2 px-4">
+                <i class="fas fa-chart-bar text-xl mb-1"></i>
+                <span class="text-xs">報表</span>
+            </button>
+        </div>
+    </nav>
 
     <!-- 彈出視窗提示 -->
     <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
@@ -370,7 +392,7 @@
         }
 
         // ==========================================
-        // 🌟 卡片視覺與一體化內嵌直接盤點 (排除紅底干擾)
+        // 卡片視覺與一體化內嵌直接盤點 (排除紅底干擾)
         // ==========================================
         function renderItems(items) {
             const container = document.getElementById('itemsList');
@@ -464,7 +486,7 @@
             container.innerHTML = html;
         }
 
-        // 卡片內直接儲存盤點，無彈窗全新手機端體驗
+        // 卡片內直接儲存盤點
         async function submitCardStocktake(index) {
             const btn = document.getElementById(`inline-btn-${index}`);
             const inputField = document.getElementById(`inline-qty-${index}`);
