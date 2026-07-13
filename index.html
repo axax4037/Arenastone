@@ -348,6 +348,7 @@
         // ==========================================
         // 🌟 核心優化：同名合併卡片 & 內嵌免彈窗直接盤點
         // ==========================================
+// 🌟 修正版 renderItems：統一盤點狀態視覺，排除低庫存底色干擾
         function renderItems(items) {
             const container = document.getElementById('itemsList');
             if (items.length === 0) {
@@ -374,6 +375,7 @@
                     return (!latest || b.last_stocktake > latest) ? b.last_stocktake : latest;
                 }, '');
                 
+                // 💡 盤點狀態判定（此處決定卡片左側的邊框顏色，已完全獨立）
                 if (latestStocktake >= today) { statusClass = 'status-today'; statusText = '今日已盤點'; }
                 else if (latestStocktake >= weekAgo) { statusClass = 'status-week'; statusText = '一週內已盤點'; }
                 
@@ -383,6 +385,7 @@
                     .reduce((earliest, b) => (!earliest || b.expiry < earliest) ? b.expiry : earliest, '');
                 
                 html += `
+                    <!-- 💡 修正：卡片底色一律統一為 bg-white，避免低庫存將今日已盤點污染成紅色背景 -->
                     <div class="bg-white rounded-lg shadow ${statusClass} batch-card">
                         <div class="p-4">
                             <div class="flex justify-between items-start mb-2">
@@ -390,13 +393,15 @@
                                     <h3 class="font-bold text-slate-800 text-lg"><i class="fas fa-box text-blue-500 text-sm mr-1"></i> ${name}</h3>
                                     <p class="text-xs text-gray-400 font-mono mt-0.5">分類: ${baseItem.category || '未分類'}</p>
                                 </div>
-                                <span class="px-2 py-1 text-xs rounded font-bold ${isLowStock ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
+                                <!-- 💡 修正：右側狀態標籤根據盤點狀態統一呈現顏色 (今日已盤點固定為綠色標籤) -->
+                                <span class="px-2 py-1 text-xs rounded font-bold ${latestStocktake >= today ? 'bg-green-100 text-green-700' : (latestStocktake >= weekAgo ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}">
                                     ${statusText}
                                 </span>
                             </div>
                             
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm bg-slate-50 p-3 rounded-lg border border-dashed">
-                                <div><div class="text-xs text-gray-500">總庫存</div><div class="font-bold text-lg ${isLowStock ? 'text-red-600' : 'text-blue-700'}">${totalQty}</div></div>
+                                <!-- 💡 修正：低庫存改為在庫存數字上呈現紅色字體提醒，不破壞卡片整體底色 -->
+                                <div><div class="text-xs text-gray-500">總庫存</div><div class="font-bold text-lg ${isLowStock ? 'text-red-600 font-extrabold animate-pulse' : 'text-blue-700'}">${totalQty} ${isLowStock ? '(低庫存!)' : ''}</div></div>
                                 <div><div class="text-xs text-gray-500">安全設定量</div><div class="font-semibold text-gray-700">${baseItem.min_qty || '0'}</div></div>
                                 <div><div class="text-xs text-gray-500">最早效期</div><div class="font-semibold text-gray-700">${formatToYYYYMMDD(earliestExpiry)}</div></div>
                                 <div><div class="text-xs text-gray-500">最後盤點</div><div class="font-mono text-xs text-gray-600">${formatToYYYYMMDDHHMM(latestStocktake)}</div></div>
@@ -409,7 +414,6 @@
                                         const cleanLot = cleanLotString(b.lot);
                                         const cleanExpiry = formatToYYYYMMDD(b.expiry);
                                         const cleanCheck = formatToYYYYMMDDHHMM(b.last_stocktake);
-                                        // 尋找此項目在原始陣列中的全域索引位置
                                         const globalIndex = allItems.findIndex(i => i.id === b.id && i.lot === b.lot && i.expiry === b.expiry);
 
                                         return `
