@@ -20,13 +20,13 @@
 </head>
 <body class="bg-gray-50 min-h-screen pb-20">
 
-    <!-- 🌟 新增：全螢幕使用者登入限制區塊 -->
+    <!-- 全螢幕使用者登入限制區塊 -->
     <div id="loginPortal" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div class="text-center">
                 <i class="fas fa-clinic-medical text-4xl text-blue-600 mb-2"></i>
                 <h2 class="text-xl font-bold text-gray-800">聖星智慧庫存登入</h2>
-                <p class="text-xs text-gray-400 mt-1">請輸入 Google 表單 Items 試算表設定之代號</p>
+                <p class="text-xs text-gray-400 mt-1">請輸入 Google 試算表設定之使用者代號</p>
             </div>
             <div class="space-y-3 pt-2">
                 <div>
@@ -102,7 +102,7 @@
                 </div>
             </div>
 
-            <!-- 品項列表 -->
+            <!-- 品項列表 (一體化免彈窗設計) -->
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
@@ -223,46 +223,13 @@
         </div>
     </div>
 
-    <!-- 批次詳情與快速盤點 Modal -->
-    <div id="detailModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50 overflow-y-auto">
-        <div class="bg-white rounded-lg p-6 max-w-lg mx-4 w-full my-8">
-            <h3 class="text-xl font-bold mb-4 text-blue-800 border-b pb-2">📦 庫存品項明細管理</h3>
-            <div id="detailContent" class="space-y-3 max-h-[350px] overflow-y-auto"></div>
-            
-            <!-- 📱 手機最佳化：精簡化盤點輸入介面 -->
-            <div id="stocktakeInlineForm" class="hidden mt-4 p-4 bg-green-50 rounded-lg border-2 border-green-300 space-y-3 shadow-inner">
-                <h4 class="font-bold text-green-800 text-sm flex items-center gap-1"><i class="fas fa-edit"></i> 手機即時盤點數值修正</h4>
-                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-white p-2 rounded border">
-                    <div>批號: <span id="stLot" class="font-bold text-slate-700"></span></div>
-                    <div>效期: <span id="stExpiry" class="font-bold text-slate-700"></span></div>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">當前實盤現存總數 *</label>
-                    <input type="number" id="stQty" class="w-full p-3 border-2 border-green-200 rounded-xl bg-white font-mono font-bold text-lg text-center text-green-700 focus:border-green-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-600 mb-1">安全警示門檻值</label>
-                    <input type="number" id="stMinQty" class="w-full p-2 border rounded bg-white text-center font-bold">
-                </div>
-                <button onclick="submitInlineStocktake()" id="stSubmitBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-md">儲存此批盤點結果</button>
-            </div>
-
-            <div class="flex gap-2 mt-5">
-                <button onclick="quickAction('領用')" class="flex-1 py-2 bg-amber-600 text-white rounded-lg font-bold">手動提領</button>
-                <button onclick="closeModals()" class="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold">關閉</button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec";
         let allItems = [], filteredItems = [], scanMode = 'inbound', scannedData = null, html5QrCode = null, isScanningActive = false;
-        
-        // 🌟 新增全域操作者變數
         let CURRENT_USER_NAME = "";
 
         // ==========================================
-        // 🌟 使用者代號身分驗證登入
+        // 使用者驗證登入
         // ==========================================
         async function handlePortalLogin() {
             const acc = document.getElementById('loginAccount').value.trim();
@@ -282,8 +249,8 @@
                 if(res.success) {
                     CURRENT_USER_NAME = res.name;
                     document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
-                    document.getElementById('loginPortal').classList.add('hidden'); // 關閉全畫面鎖
-                    loadData(); // 成功登入後抓取表單資料
+                    document.getElementById('loginPortal').classList.add('hidden');
+                    loadData(); 
                 } else {
                     alert("驗證失敗: " + res.error);
                 }
@@ -292,6 +259,48 @@
             } finally {
                 btn.disabled = false; btn.innerText = "驗證身分並登入";
             }
+        }
+
+        // ==========================================
+        // 🌟 核心修正：字串與時間精簡格式化處理工具
+        // ==========================================
+        function formatToYYYYMMDD(dateStr) {
+            if (!dateStr || dateStr === '無' || dateStr === '未盤點') return '無';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}${mm}${dd}`; // 💡 輸出純數字 YYYYMMDD
+            } catch(e) { return dateStr; }
+        }
+
+        function formatToYYYYMMDDHHMM(dateStr) {
+            if (!dateStr || dateStr === '無' || dateStr === '未盤點' || dateStr === '無盤點紀錄') return '無';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                return `${yyyy}${mm}${dd} ${hh}${min}`; // 💡 輸出純數字 YYYYMMDD HHMM
+            } catch(e) { return dateStr; }
+        }
+
+        function cleanLotString(lotStr) {
+            if (!lotStr || lotStr === '無批號' || lotStr === '無') return '無';
+            if (lotStr.includes('GMT')) {
+                try {
+                    const d = new Date(lotStr);
+                    if (!isNaN(d.getTime())) {
+                        return formatToYYYYMMDD(d);
+                    }
+                } catch(e) {}
+            }
+            return lotStr.replace(/['"]/g, '').trim(); // 💡 只顯示純字串
         }
 
         async function loadData() {
@@ -326,7 +335,7 @@
                 else if (!item.last_stocktake || item.last_stocktake < weekAgo) pendingCount++;
             });
             
-            uniqueItems.forEach(v => {
+            uniqueItems.forEach((v) => {
                 if (v.qty <= v.min) lowStockCount++;
             });
             
@@ -336,48 +345,9 @@
             document.getElementById('lowStockCount').textContent = lowStockCount;
         }
 
-// 🌟 修正：時間字串優化格式化工具
-        function formatToYYYYMMDD(dateStr) {
-            if (!dateStr || dateStr === '無' || dateStr === '未盤點') return '無';
-            try {
-                const d = new Date(dateStr);
-                if (isNaN(d.getTime())) return dateStr; // 若無法解析則原樣呈現
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                return `${yyyy}${mm}${dd}`;
-            } catch(e) { return dateStr; }
-        }
-
-        function formatToYYYYMMDDHHMM(dateStr) {
-            if (!dateStr || dateStr === '無' || dateStr === '未盤點' || dateStr === '無盤點紀錄') return '無';
-            try {
-                const d = new Date(dateStr);
-                if (isNaN(d.getTime())) return dateStr;
-                const yyyy = d.getFullYear();
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const dd = String(d.getDate()).padStart(2, '0');
-                const hh = String(d.getHours()).padStart(2, '0');
-                const min = String(d.getMinutes()).padStart(2, '0');
-                return `${yyyy}${mm}${dd} ${hh}${min}`;
-            } catch(e) { return dateStr; }
-        }
-
-        function cleanLotString(lotStr) {
-            if (!lotStr || lotStr === '無批號' || lotStr === '無') return '無';
-            // 若包含標準時間特徵，抽取出標準日期字串，否則回傳純字串
-            if (lotStr.includes('GMT')) {
-                try {
-                    const d = new Date(lotStr);
-                    if (!isNaN(d.getTime())) {
-                        return formatToYYYYMMDD(d);
-                    }
-                } catch(e) {}
-            }
-            return lotStr.replace(/['"]/g, '').trim(); // 去除單雙引號等不必要字元
-        }
-
-        // 🌟 核心修正：將批次明細完全改為「免彈窗、直接更新數量」
+        // ==========================================
+        // 🌟 核心優化：同名合併卡片 & 內嵌免彈窗直接盤點
+        // ==========================================
         function renderItems(items) {
             const container = document.getElementById('itemsList');
             if (items.length === 0) {
@@ -435,11 +405,11 @@
                             <div class="mt-2 pt-2 border-t">
                                 <p class="text-xs text-slate-400 font-bold mb-1.5">📦 批次直接管理（免彈窗，修改後點儲存即可）：</p>
                                 <div class="space-y-2">
-                                    ${batches.map((b, idx) => {
-                                        // 關鍵校正 1：時間過濾優化
+                                    ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot);
                                         const cleanExpiry = formatToYYYYMMDD(b.expiry);
                                         const cleanCheck = formatToYYYYMMDDHHMM(b.last_stocktake);
+                                        // 尋找此項目在原始陣列中的全域索引位置
                                         const globalIndex = allItems.findIndex(i => i.id === b.id && i.lot === b.lot && i.expiry === b.expiry);
 
                                         return `
@@ -469,6 +439,41 @@
                 `;
             });
             container.innerHTML = html;
+        }
+
+        // 🌟 新增：卡片內直接儲存盤點，無彈窗全新手機端體驗
+        async function submitCardStocktake(index) {
+            const btn = document.getElementById(`inline-btn-${index}`);
+            const inputField = document.getElementById(`inline-qty-${index}`);
+            const newQty = inputField.value;
+            
+            if (newQty === "" || newQty < 0) { alert("請輸入正確的盤點數量！"); return; }
+            if (!CURRENT_USER_NAME) { alert("請先登入系統！"); return; }
+
+            const item = allItems[index];
+            const originalHTML = btn.innerHTML;
+            
+            btn.disabled = true; inputField.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i>';
+            
+            try {
+                await submitData({
+                    type: '盤點', 
+                    id: item.id, 
+                    lot: item.lot, 
+                    expiry: item.expiry,
+                    qty: parseInt(newQty), 
+                    minQty: item.min_qty, 
+                    user: CURRENT_USER_NAME, 
+                    note: '主頁卡片免彈窗盤點'
+                });
+                await loadData(); 
+                alert("✨ 盤點儲存成功！");
+            } catch (error) {
+                alert('盤點失敗: ' + error.message);
+                btn.disabled = false; inputField.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
         }
 
         function filterItems() {
@@ -523,87 +528,6 @@
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.currentTarget.classList.add('active');
             if (tab === 'report') generateReport();
-        }
-
-        function showDetail(name) {
-            const batches = allItems.filter(i => i.name === name);
-            if (batches.length === 0) return;
-            
-            const baseItem = batches[0];
-            let html = `<div class="space-y-2 bg-slate-50 p-3 rounded-lg border text-sm text-slate-700">
-                <p><strong>品項名稱：</strong>${name}</p>
-                <p><strong>大分類：</strong>${baseItem.category || '未分類'}</p>
-                <p><strong>安全庫存標準：</strong>${baseItem.min_qty || '0'}</p>
-            </div><p class="font-bold text-slate-700 mt-4 mb-2 text-xs">請選擇下方特定的批號進行實盤更新：</p><div class="space-y-2">`;
-            
-            batches.forEach((b) => {
-                html += `
-                    <div class="p-3 border rounded-xl bg-white flex justify-between items-center shadow-sm">
-                        <div class="text-xs">
-                            <p class="font-mono text-gray-400">ID: ${b.id}</p>
-                            <p class="font-bold text-slate-700">批號: ${b.lot || '無'} | 效期: ${b.expiry || '無'}</p>
-                            <p class="text-gray-400">最後實盤: ${b.last_stocktake || '無'}</p>
-                        </div>
-                        <div class="text-right flex flex-col items-end gap-1">
-                            <span class="text-sm font-bold bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono">${b.qty}</span>
-                            <button onclick="openInlineStocktakeForm('${b.id}', '${b.lot}', '${b.expiry}', ${b.qty}, ${b.min_qty})" class="text-[11px] bg-green-600 text-white px-2 py-1 rounded font-bold">點我盤點</button>
-                        </div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            
-            document.getElementById('detailContent').innerHTML = html;
-            document.getElementById('detailModal').dataset.currentName = name;
-            document.getElementById('stocktakeInlineForm').classList.add('hidden'); 
-            document.getElementById('detailModal').classList.remove('hidden');
-            document.getElementById('detailModal').classList.add('flex');
-        }
-
-        function openInlineStocktakeForm(id, lot, expiry, qty, minQty) {
-            const form = document.getElementById('stocktakeInlineForm');
-            form.dataset.id = id; form.dataset.lot = lot; form.dataset.expiry = expiry;
-            document.getElementById('stLot').innerText = lot || '無';
-            document.getElementById('stExpiry').innerText = expiry || '無';
-            document.getElementById('stQty').value = qty;
-            document.getElementById('stMinQty').value = minQty || 5;
-            form.classList.remove('hidden');
-            // 📱 手機端極佳化：開啟時自動將畫面平滑捲動聚焦到輸入框上
-            setTimeout(() => { form.scrollIntoView({ behavior: 'smooth' }); }, 100);
-        }
-
-        async function submitInlineStocktake() {
-            const form = document.getElementById('stocktakeInlineForm');
-            const btn = document.getElementById('stSubmitBtn');
-            const qty = document.getElementById('stQty').value;
-            const minQty = document.getElementById('stMinQty').value;
-
-            if (!qty) { showAlert("請輸入實盤數量！"); return; }
-            
-            btn.disabled = true; btn.innerText = "變更寫入中...";
-            try {
-                // 💡 核心優化：操作人已登入代碼自動帶入 (CURRENT_USER_NAME)
-                await submitData({
-                    type: '盤點', id: form.dataset.id, lot: form.dataset.lot, expiry: form.dataset.expiry,
-                    qty: parseInt(qty), minQty: parseInt(minQty), user: CURRENT_USER_NAME, note: '手機即時明細盤點'
-                });
-                showAlert('盤點資料上傳成功！');
-                closeModals(); loadData();
-            } catch (error) {
-                showAlert('寫入失敗: ' + error.message);
-            } { btn.disabled = false; btn.innerText = "儲存此批盤點結果"; }
-        }
-
-        function quickAction(type) {
-            const name = document.getElementById('detailModal').dataset.currentName;
-            const batch = allItems.find(i => i.name === name);
-            closeModals();
-            if (type === '領用' && batch) {
-                document.getElementById('manualId').value = batch.id;
-                document.getElementById('manualType').value = '領用';
-                document.getElementById('manualName').value = batch.name;
-                switchTab('manual');
-            }
         }
 
         function startScanner() {
@@ -673,7 +597,6 @@
             
             btn.disabled = true; btn.innerText = "資料上傳中...";
             try {
-                // 💡 核心優化：操作人已登入代碼自動帶入 (CURRENT_USER_NAME)
                 await submitData({
                     type: scanMode === 'inbound' ? '入庫' : '領用', id: scannedData, name: name,
                     lot: lot, expiry: expiry, qty: parseInt(qty), user: CURRENT_USER_NAME, note: note
@@ -703,7 +626,6 @@
             
             btn.disabled = true; btn.innerText = "上傳處理中...";
             try {
-                // 💡 核心優化：操作人已登入代碼自動帶入 (CURRENT_USER_NAME)
                 await submitData({
                     type: type, id: id, name: name, lot: lot, expiry: expiry,
                     qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: note
@@ -749,7 +671,7 @@
             container.innerHTML = `
                 <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
                     <h4 class="font-bold text-amber-800 mb-2"><i class="fas fa-history"></i> 效期預警（一個月內到期批次）</h4>
-                    ${expiringSoon.length > 0 ? expiringSoon.map(i => `<p class="text-sm">• ${i.name} (批號:${i.lot||'無'}): 剩餘 ${i.qty} 個，將於 <span class="text-red-600 font-bold">${i.expiry}</span> 到期</p>`).join('') : '<p class="text-sm text-gray-500">👍 目前無即將過期耗材。</p>'}
+                    ${expiringSoon.length > 0 ? expiringSoon.map(i => `<p class="text-sm">• ${i.name} (批號:${cleanLotString(i.lot)}): 剩餘 ${i.qty} 個，將於 <span class="text-red-600 font-bold">${formatToYYYYMMDD(i.expiry)}</span> 到期</p>`).join('') : '<p class="text-sm text-gray-500">👍 目前無即將過期耗材。</p>'}
                 </div>
                 <div class="p-4 bg-red-50 rounded-lg border border-red-200 mt-3">
                     <h4 class="font-bold text-red-800 mb-2"><i class="fas fa-exclamation-circle"></i> 低庫存警示品項總覽</h4>
@@ -759,7 +681,7 @@
         }
 
         function showSettings() {
-            document.getElementById('settingSheetId').value = SHEET_ID;
+            document.getElementById('settingSheetId').value = "1yW1a5bmSTGsHhQlLE1T2-cj1bsM8YdKAMtMV-rY2_mk";
             document.getElementById('settingsModal').classList.remove('hidden');
             document.getElementById('settingsModal').classList.add('flex');
         }
@@ -785,8 +707,6 @@
             document.getElementById('alertModal').classList.add('hidden');
             document.getElementById('settingsModal').classList.add('hidden');
             document.getElementById('settingsModal').classList.remove('flex');
-            document.getElementById('detailModal').classList.add('hidden');
-            document.getElementById('detailModal').classList.remove('flex');
             if (html5QrCode) {
                 html5QrCode.stop().catch(() => {});
                 html5QrCode = null;
