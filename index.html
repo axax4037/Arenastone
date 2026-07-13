@@ -2,711 +2,530 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>聖星診所庫存管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
     <style>
-        .batch-card { transition: all 0.3s ease; }
-        .batch-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .status-today { border-left: 4px solid #22c55e; }
-        .status-week { border-left: 4px solid #f59e0b; }
-        .status-overdue { border-left: 4px solid #ef4444; }
-        .fefo-highlight { background: linear-gradient(135deg, #fef3c7 0%, #fff 100%); }
-        .modal-overlay { background: rgba(0,0,0,0.5); }
-        .nav-item.active { color: #3b82f6; }
-        @media (max-width: 640px) {
-            .grid-cols-2 { grid-template-columns: 1fr; }
-            .grid-cols-3 { grid-template-columns: 1fr; }
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f3f4f6; padding-bottom: 80px; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); padding: 16px; margin-bottom: 12px; transition: all 0.2s; border-left: 4px solid #e5e7eb; }
+        .card:active { transform: scale(0.98); }
+        .status-ok { border-left-color: #10b981; } /* 綠色：今日已盤點 */
+        .status-warn { border-left-color: #f59e0b; } /* 琥珀色：7天內 */
+        .status-danger { border-left-color: #ef4444; } /* 紅色：超過7天 */
+        .nav-item { flex: 1; text-align: center; padding: 12px 0; color: #6b7280; font-size: 12px; cursor: pointer; }
+        .nav-item.active { color: #2563eb; font-weight: bold; }
+        .nav-item i { font-size: 20px; display: block; margin-bottom: 4px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid #e5e7eb; display: flex; z-index: 1000; padding-bottom: env(safe-area-inset-bottom); }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
+        .btn { width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; margin-top: 10px; border: none; cursor: pointer; }
+        .btn-primary { background: #2563eb; color: white; }
+        .btn-success { background: #10b981; color: white; }
+        .btn-danger { background: #ef4444; color: white; }
+        .btn-secondary { background: #6b7280; color: white; }
+        input, select { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #d1d5db; border-radius: 8px; box-sizing: border-box; }
+        .badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .badge-low { background: #fee2e2; color: #ef4444; }
+        .badge-ok { background: #d1fae5; color: #10b981; }
+        .scanner-container { width: 100%; max-width: 400px; background: black; border-radius: 12px; overflow: hidden; }
+        .fade-in { animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .hidden-section { display: none; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen pb-20">
-    <!-- 頂部導航 -->
-    <header class="bg-white shadow-sm sticky top-0 z-40">
-        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-clinic-medical mr-2"></i>聖星診所</h1>
-            <button onclick="showSettings()" class="text-gray-600 hover:text-blue-600"><i class="fas fa-cog text-xl"></i></button>
-        </div>
-    </header>
+<body>
 
-    <!-- 主內容區 -->
-    <main id="mainContent" class="max-w-6xl mx-auto px-4 py-6">
-        <!-- 儀表板 -->
-        <div id="dashboardView" class="space-y-6">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <div class="text-gray-500 text-sm">總品項數</div>
-                    <div id="totalItems" class="text-2xl font-bold text-blue-600">-</div>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <div class="text-gray-500 text-sm">今日已盤點</div>
-                    <div id="todayCount" class="text-2xl font-bold text-green-600">-</div>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <div class="text-gray-500 text-sm">待盤點</div>
-                    <div id="pendingCount" class="text-2xl font-bold text-amber-600">-</div>
-                </div>
-                <div class="bg-white p-4 rounded-lg shadow">
-                    <div class="text-gray-500 text-sm">低庫存警示</div>
-                    <div id="lowStockCount" class="text-2xl font-bold text-red-600">-</div>
-                </div>
+<!-- 頂部導航 -->
+<div class="bg-white shadow-sm p-4 sticky top-0 z-50">
+    <div class="flex justify-between items-center max-w-2xl mx-auto">
+        <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-clinic-medical text-blue-600 mr-2"></i>聖星診所庫存</h1>
+        <button onclick="openSettings()" class="text-gray-600"><i class="fas fa-cog text-xl"></i></button>
+    </div>
+</div>
+
+<!-- 主要內容區 -->
+<div id="app" class="max-w-2xl mx-auto p-4">
+    <!-- 動態載入內容 -->
+    <div id="loading" class="text-center py-10">
+        <i class="fas fa-spinner fa-spin text-4xl text-blue-600 mb-4"></i>
+        <p class="text-gray-500">載入資料中...</p>
+    </div>
+    <div id="error-msg" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <strong class="font-bold">錯誤!</strong>
+        <span class="block sm:inline" id="error-text"></span>
+    </div>
+    <div id="inventory-list"></div>
+    <div id="logs-list" class="hidden-section"></div>
+    <div id="settings-view" class="hidden-section">
+        <div class="card">
+            <h2 class="text-lg font-bold mb-4">系統設定</h2>
+            <label class="block text-sm font-medium text-gray-700">Google Sheet ID</label>
+            <input type="text" id="sheet-id" placeholder="輸入試算表 ID">
+            <p class="text-xs text-gray-500 mb-4">從網址複製 /d/ 和 /edit 之間的字串</p>
+            
+            <label class="block text-sm font-medium text-gray-700">月報收件信箱</label>
+            <input type="email" id="report-email" value="mschen1116l@gmail.com">
+            
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="report-enabled" class="w-4 h-4 text-blue-600">
+                <label for="report-enabled" class="ml-2 text-sm text-gray-700">啟用自動月報</label>
             </div>
 
-            <!-- 搜尋與篩選 -->
-            <div class="bg-white p-4 rounded-lg shadow space-y-3">
-                <div class="relative">
-                    <input type="text" id="searchInput" placeholder="搜尋品項、ID、批號..." 
-                           class="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           oninput="filterItems()">
-                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
-                </div>
-                <div class="flex gap-2 overflow-x-auto pb-2">
-                    <select id="categoryFilter" onchange="filterItems()" class="px-3 py-2 border rounded-lg whitespace-nowrap">
-                        <option value="">全部分類</option>
-                    </select>
-                    <select id="statusFilter" onchange="filterItems()" class="px-3 py-2 border rounded-lg whitespace-nowrap">
-                        <option value="">全部狀態</option>
-                        <option value="today">今日已盤點</option>
-                        <option value="week">7 天內已盤點</option>
-                        <option value="overdue">超過 7 天未盤點</option>
-                    </select>
-                    <label class="flex items-center gap-2 whitespace-nowrap">
-                        <input type="checkbox" id="lowStockOnly" onchange="filterItems()" class="rounded">
-                        <span>僅顯示低庫存</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- 品項列表 -->
-            <div id="itemsList" class="space-y-4"></div>
+            <button onclick="saveSettings()" class="btn btn-primary">儲存設定</button>
         </div>
-
-        <!-- 掃描頁面 -->
-        <div id="scannerView" class="hidden space-y-4">
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>掃碼作業</h2>
-                <div class="flex gap-2 mb-4">
-                    <button onclick="setScanMode('inbound')" id="scanInbound" class="flex-1 py-2 bg-blue-600 text-white rounded-lg">入庫</button>
-                    <button onclick="setScanMode('outbound')" id="scanOutbound" class="flex-1 py-2 bg-gray-200 rounded-lg">領用</button>
-                </div>
-                <div id="scannerContainer" class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <p class="text-gray-500 mb-4">點擊下方按鈕啟動相機掃描</p>
-                    <button onclick="startScanner()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                        <i class="fas fa-camera mr-2"></i>啟動掃描
-                    </button>
-                    <div id="scanResult" class="mt-4 hidden">
-                        <p class="text-green-600 font-semibold">掃描成功：<span id="scannedCode"></span></p>
-                    </div>
-                </div>
-                <div id="scanForm" class="hidden mt-4 space-y-3">
-                    <input type="number" id="scanQty" placeholder="數量" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="text" id="scanUser" placeholder="操作人" class="w-full px-3 py-2 border rounded-lg">
-                    <textarea id="scanNote" placeholder="備註" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
-                    <button onclick="submitScan()" class="w-full py-3 bg-blue-600 text-white rounded-lg">確認提交</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 手動作業頁面 -->
-        <div id="manualView" class="hidden space-y-4">
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用</h2>
-                <div class="space-y-3">
-                    <input type="text" id="manualId" placeholder="品項 ID" class="w-full px-3 py-2 border rounded-lg">
-                    <select id="manualType" class="w-full px-3 py-2 border rounded-lg">
-                        <option value="入庫">入庫</option>
-                        <option value="領用">領用</option>
-                    </select>
-                    <input type="text" id="manualLot" placeholder="批號（可選）" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="date" id="manualExpiry" placeholder="效期（入庫時必填）" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="number" id="manualQty" placeholder="數量" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="number" id="manualPrice" placeholder="單價（可選）" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="text" id="manualUser" placeholder="操作人" class="w-full px-3 py-2 border rounded-lg">
-                    <textarea id="manualNote" placeholder="備註" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
-                    <button onclick="submitManual()" class="w-full py-3 bg-blue-600 text-white rounded-lg">提交</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 報表頁面 -->
-        <div id="reportView" class="hidden space-y-4">
-            <div class="bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存報表</h2>
-                <div id="reportContent" class="space-y-3"></div>
-            </div>
-        </div>
-    </main>
-
-    <!-- 底部導航列 -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
-        <div class="max-w-6xl mx-auto flex justify-around py-2">
-            <button onclick="switchTab('dashboard')" class="nav-item active flex flex-col items-center py-2 px-4">
-                <i class="fas fa-home text-xl mb-1"></i>
-                <span class="text-xs">首頁</span>
-            </button>
-            <button onclick="switchTab('scanner')" class="nav-item flex flex-col items-center py-2 px-4">
-                <i class="fas fa-barcode text-xl mb-1"></i>
-                <span class="text-xs">掃碼</span>
-            </button>
-            <button onclick="switchTab('manual')" class="nav-item flex flex-col items-center py-2 px-4">
-                <i class="fas fa-edit text-xl mb-1"></i>
-                <span class="text-xs">手動</span>
-            </button>
-            <button onclick="switchTab('report')" class="nav-item flex flex-col items-center py-2 px-4">
-                <i class="fas fa-chart-bar text-xl mb-1"></i>
-                <span class="text-xs">報表</span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- 彈出視窗 -->
-    <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-sm mx-4 w-full">
-            <p id="alertMessage" class="mb-4"></p>
-            <button onclick="closeAlert()" class="w-full py-2 bg-blue-600 text-white rounded-lg">確定</button>
+        <div class="card">
+            <h3 class="font-bold mb-2">目前登入使用者</h3>
+            <p id="current-user-display" class="text-gray-600">未登入 (將使用預設)</p>
+            <input type="text" id="user-code" placeholder="輸入登入代號 (選填)" class="mt-2">
+            <button onclick="setUser()" class="btn btn-secondary mt-2">設定使用者</button>
         </div>
     </div>
+</div>
 
-    <div id="settingsModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-md mx-4 w-full">
-            <h3 class="text-lg font-semibold mb-4">系統設定</h3>
-            <div class="space-y-3">
-                <input type="text" id="settingSheetId" placeholder="Google Sheet ID" class="w-full px-3 py-2 border rounded-lg">
-                <input type="email" id="settingEmail" placeholder="月報 Email" class="w-full px-3 py-2 border rounded-lg">
-                <label class="flex items-center gap-2">
-                    <input type="checkbox" id="settingReportEnabled" class="rounded">
-                    <span>啟用月報自動發送</span>
-                </label>
-                <button onclick="saveSettings()" class="w-full py-2 bg-blue-600 text-white rounded-lg">儲存</button>
-                <button onclick="closeModals()" class="w-full py-2 bg-gray-200 rounded-lg">取消</button>
-            </div>
+<!-- 底部導航列 -->
+<div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('inventory')">
+        <i class="fas fa-boxes"></i>庫存
+    </div>
+    <div class="nav-item" onclick="openScanner('in')">
+        <i class="fas fa-plus-circle"></i>入庫
+    </div>
+    <div class="nav-item" onclick="openScanner('out')">
+        <i class="fas fa-minus-circle"></i>領用
+    </div>
+    <div class="nav-item" onclick="switchTab('logs')">
+        <i class="fas fa-history"></i>日誌
+    </div>
+</div>
+
+<!-- 通用 Modal -->
+<div id="action-modal" class="modal">
+    <div class="modal-content">
+        <h2 id="modal-title" class="text-xl font-bold mb-4">操作</h2>
+        <div id="modal-body"></div>
+        <div class="flex gap-2 mt-4">
+            <button onclick="closeModal()" class="btn btn-secondary flex-1">取消</button>
+            <button id="modal-confirm-btn" class="btn btn-primary flex-1">確認</button>
         </div>
     </div>
+</div>
 
-    <div id="detailModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50 overflow-y-auto">
-        <div class="bg-white rounded-lg p-6 max-w-lg mx-4 w-full my-8">
-            <h3 class="text-lg font-semibold mb-4">批次詳情</h3>
-            <div id="detailContent" class="space-y-3"></div>
-            <div class="flex gap-2 mt-4">
-                <button onclick="quickAction('盤點')" class="flex-1 py-2 bg-green-600 text-white rounded-lg">盤點</button>
-                <button onclick="quickAction('領用')" class="flex-1 py-2 bg-amber-600 text-white rounded-lg">領用</button>
-                <button onclick="closeModals()" class="flex-1 py-2 bg-gray-200 rounded-lg">關閉</button>
-            </div>
-        </div>
+<!-- 掃描器 Modal -->
+<div id="scanner-modal" class="modal">
+    <div class="modal-content text-center">
+        <h2 class="text-xl font-bold mb-4">掃描條碼</h2>
+        <div id="reader" class="scanner-container mb-4"></div>
+        <p class="text-sm text-gray-500 mb-4">將鏡頭對準條碼或 QR Code</p>
+        <button onclick="stopScanner()" class="btn btn-danger">關閉掃描器</button>
     </div>
+</div>
 
-    <script>
-        // 全域變數
-        let allItems = [];
-        let filteredItems = [];
-        let scanMode = 'inbound';
-        let scannedData = null;
-        let html5QrCode = null;
-        const SHEET_ID = localStorage.getItem('sheetId') || 'YOUR_SHEET_ID';
+<script>
+// --- 設定與全域變數 ---
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec';
+let inventoryData = [];
+let settingsData = {};
+let currentUser = localStorage.getItem('clinic_user') || '系統管理員';
+let html5QrCode = null;
+let scanMode = ''; // 'in' or 'out'
+
+// --- 初始化 ---
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('user-code').value = currentUser === '系統管理員' ? '' : currentUser;
+    document.getElementById('current-user-display').textContent = currentUser;
+    loadData();
+});
+
+// --- 資料載入 ---
+async function loadData() {
+    const sheetId = localStorage.getItem('sheet_id');
+    if (!sheetId) {
+        showError('請先至設定頁面輸入 Google Sheet ID');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${SCRIPT_URL}?id=${sheetId}&t=${Date.now()}`);
+        if (!response.ok) throw new Error('網路回應失敗');
+        const result = await response.json();
         
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
-            loadSettings();
+        if (result.success === false) throw new Error(result.error || 'API 錯誤');
+        
+        inventoryData = result.items || [];
+        settingsData = result.settings || {};
+        
+        // 同步設定到 UI
+        document.getElementById('sheet-id').value = sheetId;
+        document.getElementById('report-email').value = settingsData.reportEmail || 'mschen1116l@gmail.com';
+        document.getElementById('report-enabled').checked = settingsData.reportEnabled || false;
+
+        renderInventory();
+        hideError();
+    } catch (error) {
+        showError(`載入失敗：${error.message}。請檢查網路或 Sheet ID。`);
+        console.error(error);
+    }
+}
+
+// --- 渲染庫存列表 ---
+function renderInventory() {
+    const container = document.getElementById('inventory-list');
+    container.innerHTML = '';
+    
+    // 分組處理：同品項多批次
+    const grouped = {};
+    inventoryData.forEach(item => {
+        if (!grouped[item.id]) grouped[item.id] = [];
+        grouped[item.id].push(item);
+    });
+
+    Object.keys(grouped).forEach(id => {
+        const batches = grouped[id];
+        const mainItem = batches[0];
+        
+        // 計算總庫存與最低安全量
+        const totalQty = batches.reduce((sum, b) => sum + (Number(b.qty) || 0), 0);
+        const minQty = Number(mainItem.minQty) || 0;
+        const isLowStock = totalQty <= minQty && totalQty > 0;
+
+        // FEFO: 找出最早效期
+        let earliestExpiry = '無效期';
+        let soonestDate = null;
+        batches.forEach(b => {
+            if (b.expiry) {
+                const d = new Date(b.expiry);
+                if (!soonestDate || d < soonestDate) {
+                    soonestDate = d;
+                    earliestExpiry = b.expiry;
+                }
+            }
         });
 
-        // 載入資料
-        async function loadData() {
-            try {
-                const response = await fetch(`https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec`);
-                const data = await response.json();
-                allItems = data.items || [];
-                updateDashboard();
-                renderItems(allItems);
-                updateCategoryFilter();
-            } catch (error) {
-                showAlert('載入失敗：' + error.message);
+        // 盤點狀態顏色邏輯
+        let statusClass = 'status-ok'; // 預設綠色
+        let lastStocktakeText = '未盤點';
+        
+        if (mainItem.lastStocktake) {
+            const lastDate = new Date(mainItem.lastStocktake);
+            const now = new Date();
+            const diffTime = Math.abs(now - lastDate);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+            
+            // 格式化時間顯示
+            if (diffDays === 0 && now.getDate() === lastDate.getDate()) {
+                lastStocktakeText = `今日 ${lastDate.getHours()}:${String(lastDate.getMinutes()).padStart(2, '0')}`;
+                statusClass = 'status-ok';
+            } else if (diffDays <= 7) {
+                lastStocktakeText = `${diffDays}天前`;
+                statusClass = 'status-warn';
+            } else {
+                lastStocktakeText = `${diffDays}天前 (需盤點)`;
+                statusClass = 'status-danger';
             }
         }
 
-        // 更新儀表板
-        function updateDashboard() {
-            const today = new Date().toISOString().split('T')[0];
-            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        const card = document.createElement('div');
+        card.className = `card ${statusClass} fade-in`;
+        card.innerHTML = `
+            <div class="flex justify-between items-start mb-2">
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800">${mainItem.name}</h3>
+                    <p class="text-xs text-gray-500">ID: ${mainItem.id} | 分類: ${mainItem.category}</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-2xl font-bold ${isLowStock ? 'text-red-600' : 'text-gray-800'}">${totalQty}</span>
+                    <p class="text-xs text-gray-500">單位</p>
+                    ${isLowStock ? '<span class="badge badge-low mt-1">低庫存</span>' : ''}
+                </div>
+            </div>
             
-            let todayCount = 0, pendingCount = 0, lowStockCount = 0;
-            const uniqueItems = new Map();
-            
-            allItems.forEach(item => {
-                if (!uniqueItems.has(item.id)) uniqueItems.set(item.id, item);
-                
-                const lastStocktake = item.last_stocktake || '';
-                if (lastStocktake >= today) todayCount++;
-                else if (lastStocktake < weekAgo) pendingCount++;
-                
-                if (item.qty <= (item.min_qty || 0)) lowStockCount++;
-            });
-            
-            document.getElementById('totalItems').textContent = uniqueItems.size;
-            document.getElementById('todayCount').textContent = todayCount;
-            document.getElementById('pendingCount').textContent = pendingCount;
-            document.getElementById('lowStockCount').textContent = lowStockCount;
-        }
+            <div class="bg-gray-50 p-2 rounded text-xs mb-2">
+                <div class="flex justify-between">
+                    <span>📅 最早效期:</span>
+                    <span class="font-mono ${soonestDate && soonestDate < new Date() ? 'text-red-600 font-bold' : ''}">${earliestExpiry}</span>
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span>📝 最後盤點:</span>
+                    <span class="${statusClass === 'status-danger' ? 'text-red-600 font-bold' : 'text-gray-600'}">${lastStocktakeText}</span>
+                </div>
+            </div>
 
-        // 渲染品項列表
-        function renderItems(items) {
-            const container = document.getElementById('itemsList');
-            if (items.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8">無符合條件的品項</div>';
-                return;
-            }
-            
-            const today = new Date().toISOString().split('T')[0];
-            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            
-            // 按品項分組
-            const grouped = new Map();
-            items.forEach(item => {
-                if (!grouped.has(item.id)) grouped.set(item.id, []);
-                grouped.get(item.id).push(item);
-            });
-            
-            let html = '';
-            grouped.forEach((batches, id) => {
-                const baseItem = batches[0];
-                let statusClass = 'status-overdue';
-                let statusText = '超過 7 天未盤點';
-                
-                const latestStocktake = batches.reduce((latest, b) => {
-                    return (!latest || b.last_stocktake > latest) ? b.last_stocktake : latest;
-                }, '');
-                
-                if (latestStocktake >= today) {
-                    statusClass = 'status-today';
-                    statusText = '今日已盤點';
-                } else if (latestStocktake >= weekAgo) {
-                    statusClass = 'status-week';
-                    statusText = '7 天內已盤點';
-                }
-                
-                const totalQty = batches.reduce((sum, b) => sum + (parseInt(b.qty) || 0), 0);
-                const isLowStock = totalQty <= (baseItem.min_qty || 0);
-                
-                // FEFO: 找最早效期
-                const earliestExpiry = batches.filter(b => b.expiry && parseInt(b.qty) > 0)
-                    .reduce((earliest, b) => (!earliest || b.expiry < earliest) ? b.expiry : earliest, '');
-                
-                html += `
-                    <div class="bg-white rounded-lg shadow ${statusClass} batch-card">
-                        <div class="p-4">
-                            <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <h3 class="font-semibold text-lg">${baseItem.name}</h3>
-                                    <p class="text-sm text-gray-500">ID: ${id} | ${baseItem.category || '未分類'}</p>
-                                </div>
-                                <span class="px-2 py-1 text-xs rounded ${isLowStock ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
-                                    ${statusText}
-                                </span>
+            <div class="border-t pt-2 mt-2">
+                <p class="text-xs font-bold text-gray-500 mb-1">批次詳情 (${batches.length}):</p>
+                <div class="grid grid-cols-2 gap-2">
+                    ${batches.map((b, idx) => `
+                        <div class="bg-white border rounded p-1 text-xs">
+                            <div class="flex justify-between">
+                                <span class="font-bold">批號: ${b.lot || '-'}</span>
+                                <span>${b.qty}</span>
                             </div>
-                            
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                                <div>
-                                    <div class="text-xs text-gray-500">總庫存</div>
-                                    <div class="font-semibold ${isLowStock ? 'text-red-600' : ''}">${totalQty}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-500">安全庫存</div>
-                                    <div class="font-semibold">${baseItem.min_qty || '-'}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-500">最早效期</div>
-                                    <div class="font-semibold ${earliestExpiry && earliestExpiry < new Date().toISOString().split('T')[0] ? 'text-red-600' : ''}">${earliestExpiry || '-'}</div>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-gray-500">最後盤點</div>
-                                    <div class="font-semibold">${latestStocktake || '未盤點'}</div>
-                                </div>
-                            </div>
-                            
-                            ${batches.length > 1 ? `
-                                <div class="border-t pt-3">
-                                    <p class="text-xs text-gray-500 mb-2">共 ${batches.length} 個批次：</p>
-                                    <div class="space-y-2">
-                                        ${batches.map((b, idx) => {
-                                            const isFEFO = b.expiry === earliestExpiry && parseInt(b.qty) > 0;
-                                            return `
-                                                <div class="flex justify-between items-center text-sm ${isFEFO ? 'fefo-highlight p-2 rounded' : ''}">
-                                                    <span>批號：${b.lot || '-'} | 效期：${b.expiry || '-'}</span>
-                                                    <span class="font-semibold">${b.qty}</span>
-                                                </div>
-                                            `;
-                                        }).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="flex gap-2 mt-4">
-                                <button onclick="showDetail('${id}')" class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-sm">詳情</button>
-                                <button onclick="quickStocktake('${id}')" class="flex-1 py-2 bg-green-600 text-white rounded-lg text-sm">快速盤點</button>
-                            </div>
+                            <div class="text-gray-500">${b.expiry || '無效期'}</div>
                         </div>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-        }
-
-        // 篩選功能
-        function filterItems() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const category = document.getElementById('categoryFilter').value;
-            const status = document.getElementById('statusFilter').value;
-            const lowStockOnly = document.getElementById('lowStockOnly').checked;
-            
-            const today = new Date().toISOString().split('T')[0];
-            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            
-            filteredItems = allItems.filter(item => {
-                const matchSearch = !search || 
-                    item.name.toLowerCase().includes(search) || 
-                    item.id.toLowerCase().includes(search) ||
-                    (item.lot && item.lot.toLowerCase().includes(search));
-                
-                const matchCategory = !category || item.category === category;
-                
-                let matchStatus = true;
-                if (status === 'today' && !(item.last_stocktake >= today)) matchStatus = false;
-                if (status === 'week' && !(item.last_stocktake >= weekAgo && item.last_stocktake < today)) matchStatus = false;
-                if (status === 'overdue' && item.last_stocktake >= weekAgo) matchStatus = false;
-                
-                let matchLowStock = true;
-                if (lowStockOnly) {
-                    const itemTotal = allItems.filter(i => i.id === item.id).reduce((sum, i) => sum + (parseInt(i.qty) || 0), 0);
-                    if (itemTotal > (item.min_qty || 0)) matchLowStock = false;
-                }
-                
-                return matchSearch && matchCategory && matchStatus && matchLowStock;
-            });
-            
-            renderItems(filteredItems);
-        }
-
-        // 更新分類篩選
-        function updateCategoryFilter() {
-            const categories = [...new Set(allItems.map(i => i.category).filter(Boolean))];
-            const select = document.getElementById('categoryFilter');
-            select.innerHTML = '<option value="">全部分類</option>' + 
-                categories.map(c => `<option value="${c}">${c}</option>`).join('');
-        }
-
-        // 切換分頁
-        function switchTab(tab) {
-            document.querySelectorAll('#mainContent > div').forEach(div => div.classList.add('hidden'));
-            document.getElementById(tab + 'View').classList.remove('hidden');
-            
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            
-            if (tab === 'report') generateReport();
-        }
-
-        // 顯示詳情
-        function showDetail(id) {
-            const batches = allItems.filter(i => i.id === id);
-            if (batches.length === 0) return;
-            
-            const baseItem = batches[0];
-            const totalQty = batches.reduce((sum, b) => sum + (parseInt(b.qty) || 0), 0);
-            const earliestExpiry = batches.filter(b => b.expiry && parseInt(b.qty) > 0)
-                .reduce((earliest, b) => (!earliest || b.expiry < earliest) ? b.expiry : earliest, '');
-            
-            let html = `
-                <div class="space-y-2">
-                    <p><strong>品項名稱：</strong>${baseItem.name}</p>
-                    <p><strong>ID：</strong>${id}</p>
-                    <p><strong>分類：</strong>${baseItem.category || '未分類'}</p>
-                    <p><strong>總庫存：</strong>${totalQty}</p>
-                    <p><strong>安全庫存：</strong>${baseItem.min_qty || '-'}</p>
-                    <p><strong>供應商：</strong>${baseItem.vendor || '-'}</p>
-                    <p><strong>最早效期：</strong>${earliestExpiry || '-'}</p>
-                    <hr>
-                    <p class="font-semibold">批次明細：</p>
-                    <div class="space-y-2">
-            `;
-            
-            batches.forEach((b, idx) => {
-                const isFEFO = b.expiry === earliestExpiry && parseInt(b.qty) > 0;
-                html += `
-                    <div class="p-2 ${isFEFO ? 'fefo-highlight rounded' : 'bg-gray-50'}">
-                        <p>批號：${b.lot || '-'}</p>
-                        <p>效期：${b.expiry || '-'}</p>
-                        <p>庫存：${b.qty} ${isFEFO ? '<span class="text-green-600 text-xs">(FEFO 優先)</span>' : ''}</p>
-                        <p>最後盤點：${b.last_stocktake || '未盤點'}</p>
-                    </div>
-                `;
-            });
-            
-            html += '</div></div>';
-            
-            document.getElementById('detailContent').innerHTML = html;
-            document.getElementById('detailModal').dataset.currentId = id;
-            document.getElementById('detailModal').classList.remove('hidden');
-            document.getElementById('detailModal').classList.add('flex');
-        }
-
-        // 快速盤點
-        async function quickStocktake(id) {
-            const batches = allItems.filter(i => i.id === id);
-            if (batches.length === 0) return;
-            
-            const qty = prompt('請輸入盤點數量（該品項總計）：', 
-                batches.reduce((sum, b) => sum + (parseInt(b.qty) || 0), 0));
-            if (!qty) return;
-            
-            const user = prompt('操作人姓名：') || '未知';
-            
-            try {
-                // 對每個批次進行盤點，更新最後盤點時間
-                for (const batch of batches) {
-                    await submitData({
-                        type: '盤點',
-                        id: batch.id,
-                        lot: batch.lot,
-                        expiry: batch.expiry,
-                        qty: Math.round(parseInt(qty) / batches.length),
-                        minQty: batch.min_qty,
-                        user: user,
-                        note: '快速盤點',
-                        last_stocktake: new Date().toISOString().split('T')[0]
-                    });
-                }
-                
-                showAlert('盤點成功！');
-                loadData();
-            } catch (error) {
-                showAlert('盤點失敗：' + error.message);
-            }
-        }
-
-        // 快速動作
-        function quickAction(type) {
-            const id = document.getElementById('detailModal').dataset.currentId;
-            closeModals();
-            
-            if (type === '盤點') {
-                quickStocktake(id);
-            } else if (type === '領用') {
-                document.getElementById('manualId').value = id;
-                document.getElementById('manualType').value = '領用';
-                switchTab('manual');
-            }
-        }
-
-        // 掃描功能
-        function setScanMode(mode) {
-            scanMode = mode;
-            document.getElementById('scanInbound').className = 
-                `flex-1 py-2 rounded-lg ${mode === 'inbound' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`;
-            document.getElementById('scanOutbound').className = 
-                `flex-1 py-2 rounded-lg ${mode === 'outbound' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`;
-        }
-
-        function startScanner() {
-            if (html5QrCode) html5QrCode.stop();
-            
-            html5QrCode = new Html5Qrcode('scannerContainer');
-            html5QrCode.start(
-                { facingMode: 'environment' },
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    html5QrCode.stop();
-                    document.getElementById('scannedCode').textContent = decodedText;
-                    document.getElementById('scanResult').classList.remove('hidden');
-                    document.getElementById('scanForm').classList.remove('hidden');
-                    scannedData = decodedText;
-                },
-                (error) => {}
-            ).catch(err => showAlert('啟動相機失敗：' + err));
-        }
-
-        async function submitScan() {
-            const qty = document.getElementById('scanQty').value;
-            const user = document.getElementById('scanUser').value || '未知';
-            const note = document.getElementById('scanNote').value;
-            
-            if (!qty || !scannedData) {
-                showAlert('請輸入數量和完成掃描');
-                return;
-            }
-            
-            try {
-                await submitData({
-                    type: scanMode === 'inbound' ? '入庫' : '領用',
-                    id: scannedData,
-                    lot: '',
-                    expiry: '',
-                    qty: parseInt(qty),
-                    user: user,
-                    note: note
-                });
-                
-                showAlert('提交成功！');
-                document.getElementById('scanForm').classList.add('hidden');
-                document.getElementById('scanResult').classList.add('hidden');
-                document.getElementById('scanQty').value = '';
-                document.getElementById('scanNote').value = '';
-                loadData();
-            } catch (error) {
-                showAlert('提交失敗：' + error.message);
-            }
-        }
-
-        // 手動提交
-        async function submitManual() {
-            const id = document.getElementById('manualId').value;
-            const type = document.getElementById('manualType').value;
-            const lot = document.getElementById('manualLot').value;
-            const expiry = document.getElementById('manualExpiry').value;
-            const qty = document.getElementById('manualQty').value;
-            const price = document.getElementById('manualPrice').value;
-            const user = document.getElementById('manualUser').value || '未知';
-            const note = document.getElementById('manualNote').value;
-            
-            if (!id || !qty) {
-                showAlert('請填寫品項 ID 和數量');
-                return;
-            }
-            
-            if (type === '入庫' && !expiry) {
-                showAlert('入庫時必須填寫效期');
-                return;
-            }
-            
-            try {
-                await submitData({
-                    type: type,
-                    id: id,
-                    lot: lot,
-                    expiry: expiry,
-                    qty: parseInt(qty),
-                    price: price ? parseFloat(price) : 0,
-                    user: user,
-                    note: note
-                });
-                
-                showAlert('提交成功！');
-                document.getElementById('manualId').value = '';
-                document.getElementById('manualLot').value = '';
-                document.getElementById('manualExpiry').value = '';
-                document.getElementById('manualQty').value = '';
-                document.getElementById('manualPrice').value = '';
-                document.getElementById('manualNote').value = '';
-                loadData();
-            } catch (error) {
-                showAlert('提交失敗：' + error.message);
-            }
-        }
-
-        // 提交資料到 Google Apps Script
-        async function submitData(params) {
-            const response = await fetch(`https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params)
-            });
-            
-            const result = await response.text();
-            if (result !== 'Success') throw new Error(result);
-        }
-
-        // 生成報表
-        function generateReport() {
-            const container = document.getElementById('reportContent');
-            
-            const expiringSoon = allItems.filter(i => {
-                if (!i.expiry || parseInt(i.qty) <= 0) return false;
-                const expiryDate = new Date(i.expiry);
-                const oneMonthLater = new Date();
-                oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
-                return expiryDate <= oneMonthLater;
-            });
-            
-            const lowStock = allItems.filter(i => parseInt(i.qty) <= (i.min_qty || 0));
-            
-            let html = `
-                <div class="p-4 bg-amber-50 rounded-lg">
-                    <h4 class="font-semibold text-amber-800 mb-2">⚠️ 即將到期（一個月內）</h4>
-                    ${expiringSoon.length > 0 ? 
-                        expiringSoon.map(i => `<p class="text-sm">• ${i.name} (${i.id}): ${i.qty} 個，效期 ${i.expiry}</p>`).join('') :
-                        '<p class="text-sm text-gray-500">無即將到期品項</p>'}
+                    `).join('')}
                 </div>
-                
-                <div class="p-4 bg-red-50 rounded-lg">
-                    <h4 class="font-semibold text-red-800 mb-2">🔴 低庫存警示</h4>
-                    ${lowStock.length > 0 ? 
-                        lowStock.map(i => `<p class="text-sm">• ${i.name} (${i.id}): 剩餘 ${i.qty}，安全庫存 ${i.min_qty}</p>`).join('') :
-                        '<p class="text-sm text-gray-500">無低庫存品項</p>'}
-                </div>
-            `;
-            
-            container.innerHTML = html;
-        }
+            </div>
 
-        // 設定功能
-        function showSettings() {
-            document.getElementById('settingSheetId').value = localStorage.getItem('sheetId') || '';
-            document.getElementById('settingEmail').value = localStorage.getItem('reportEmail') || '';
-            document.getElementById('settingReportEnabled').checked = localStorage.getItem('reportEnabled') === 'true';
-            document.getElementById('settingsModal').classList.remove('hidden');
-            document.getElementById('settingsModal').classList.add('flex');
-        }
+            <div class="flex gap-2 mt-4">
+                <button onclick="openManualAction('in', '${mainItem.id}')" class="btn btn-success flex-1 text-sm py-2"><i class="fas fa-plus mr-1"></i>入庫</button>
+                <button onclick="openManualAction('out', '${mainItem.id}')" class="btn btn-danger flex-1 text-sm py-2"><i class="fas fa-minus mr-1"></i>領用</button>
+                <button onclick="openStocktake('${mainItem.id}')" class="btn btn-primary flex-1 text-sm py-2"><i class="fas fa-clipboard-check mr-1"></i>盤點</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
 
-        function loadSettings() {
-            // 從 localStorage 載入設定
-        }
+// --- 渲染日誌 ---
+function renderLogs(logs) {
+    const container = document.getElementById('logs-list');
+    container.innerHTML = '';
+    if (!logs || logs.length === 0) {
+        container.innerHTML = '<p class="text-center text-gray-500 py-10">尚無紀錄</p>';
+        return;
+    }
+    
+    logs.slice().reverse().forEach(log => {
+        const div = document.createElement('div');
+        div.className = 'card py-2';
+        div.innerHTML = `
+            <div class="flex justify-between text-xs text-gray-500 mb-1">
+                <span>${log.time}</span>
+                <span class="font-bold ${log.type === '領用' ? 'text-red-500' : 'text-green-600'}">${log.type}</span>
+            </div>
+            <div class="font-bold text-gray-800">${log.id} <span class="text-gray-500 font-normal">x ${log.qty}</span></div>
+            <div class="text-xs text-gray-500">經手人: ${log.user || '-'} | 批號: ${log.lot || '-'}</div>
+        `;
+        container.appendChild(div);
+    });
+}
 
-        function saveSettings() {
-            const sheetId = document.getElementById('settingSheetId').value;
-            const email = document.getElementById('settingEmail').value;
-            const reportEnabled = document.getElementById('settingReportEnabled').checked;
-            
-            localStorage.setItem('sheetId', sheetId);
-            localStorage.setItem('reportEmail', email);
-            localStorage.setItem('reportEnabled', reportEnabled);
-            
-            showAlert('設定已儲存');
-            closeModals();
-        }
+// --- 操作功能 ---
+function openManualAction(type, id) {
+    const item = inventoryData.find(i => i.id === id);
+    if (!item) return;
+    
+    const modalBody = document.getElementById('modal-body');
+    document.getElementById('modal-title').innerText = type === 'in' ? '手動入庫' : '手動領用';
+    
+    // 自動帶入當前使用者，但隱藏輸入框 (根據需求：操作者不用輸入，自動帶入)
+    // 這裡我們不顯示輸入框，直接在背景處理
+    
+    modalBody.innerHTML = `
+        <p class="mb-2 text-gray-600">品項：<strong>${item.name}</strong> (目前: ${item.qty})</p>
+        <label class="text-sm text-gray-600">數量</label>
+        <input type="number" id="action-qty" value="1" min="1">
+        <label class="text-sm text-gray-600">備註 (選填)</label>
+        <input type="text" id="action-note" placeholder="例如：補充庫存...">
+        <input type="hidden" id="action-lot" value="">
+        <input type="hidden" id="action-expiry" value="">
+        <p class="text-xs text-gray-400 mt-2">* 經手人將自動記錄為：${currentUser}</p>
+    `;
+    
+    document.getElementById('modal-confirm-btn').onclick = () => submitAction(type, id);
+    document.getElementById('action-modal').style.display = 'flex';
+}
 
-        // 通用函數
-        function showAlert(message) {
-            document.getElementById('alertMessage').textContent = message;
-            document.getElementById('alertModal').classList.remove('hidden');
-            document.getElementById('alertModal').classList.add('flex');
-        }
+function openStocktake(id) {
+    const item = inventoryData.find(i => i.id === id);
+    if (!item) return;
+    
+    const modalBody = document.getElementById('modal-body');
+    document.getElementById('modal-title').innerText = '庫存盤點';
+    
+    modalBody.innerHTML = `
+        <p class="mb-2 text-gray-600">品項：<strong>${item.name}</strong></p>
+        <p class="text-sm text-gray-500 mb-4">系統將更新「最後盤點時間」為現在</p>
+        <label class="text-sm text-gray-600">實際清點數量</label>
+        <input type="number" id="action-qty" value="${item.qty}" min="0">
+        <label class="text-sm text-gray-600">調整安全庫存門檻 (選填)</label>
+        <input type="number" id="action-min-qty" value="${item.minQty}" placeholder="保持不變留空">
+        <p class="text-xs text-gray-400 mt-2">* 經手人將自動記錄為：${currentUser}</p>
+    `;
+    
+    document.getElementById('modal-confirm-btn').onclick = () => submitAction('stocktake', id);
+    document.getElementById('action-modal').style.display = 'flex';
+}
 
-        function closeAlert() {
-            document.getElementById('alertModal').classList.add('hidden');
-            document.getElementById('alertModal').classList.remove('flex');
-        }
+async function submitAction(type, id) {
+    const qty = document.getElementById('action-qty').value;
+    const note = document.getElementById('action-note')?.value || '';
+    const minQty = document.getElementById('action-min-qty')?.value;
+    const lot = document.getElementById('action-lot')?.value || '';
+    const expiry = document.getElementById('action-expiry')?.value || '';
+    
+    if (!qty || qty < 0) { alert('請輸入有效數量'); return; }
 
-        function closeModals() {
-            document.getElementById('alertModal').classList.add('hidden');
-            document.getElementById('alertModal').classList.remove('flex');
-            document.getElementById('settingsModal').classList.add('hidden');
-            document.getElementById('settingsModal').classList.remove('flex');
-            document.getElementById('detailModal').classList.add('hidden');
-            document.getElementById('detailModal').classList.remove('flex');
-            if (html5QrCode) {
-                html5QrCode.stop().catch(() => {});
-                html5QrCode = null;
-            }
-        }
+    const item = inventoryData.find(i => i.id === id);
+    let typeName = '';
+    if (type === 'in') typeName = '手動入庫';
+    else if (type === 'out') typeName = '領用';
+    else if (type === 'stocktake') typeName = '盤點';
 
-        // 點擊遮罩關閉
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) closeModals();
-            });
+    const payload = {
+        type: typeName,
+        id: id,
+        name: item.name,
+        category: item.category,
+        qty: qty,
+        user: currentUser, // 自動帶入
+        note: note,
+        lot: lot,
+        expiry: expiry,
+        price: item.price || 0,
+        minQty: minQty
+    };
+
+    closeModal();
+    showLoading(true);
+
+    try {
+        // 使用 no-cors 模式或標準 POST，這裡嘗試標準 POST 並處理 CORS
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' }, // 避免 preflight
+            body: JSON.stringify(payload)
         });
-    </script>
+        
+        const text = await response.text();
+        if (text.includes('Success') || text.includes('success')) {
+            alert('操作成功！');
+            loadData(); // 即時刷新
+        } else {
+            alert('操作失敗：' + text);
+        }
+    } catch (error) {
+        console.error(error);
+        alert('發送請求時發生錯誤，請檢查網路。但後端可能已寫入，請重新整理確認。');
+        loadData();
+    } finally {
+        showLoading(false);
+    }
+}
+
+// --- 掃描器功能 ---
+function openScanner(mode) {
+    scanMode = mode;
+    document.getElementById('scanner-modal').style.display = 'flex';
+    
+    html5QrCode = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    
+    html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess)
+        .catch(err => { alert('無法啟動相機：' + err); stopScanner(); });
+}
+
+function onScanSuccess(decodedText) {
+    stopScanner();
+    // 假設掃描到的是 ID，尋找對應品項
+    const item = inventoryData.find(i => i.id === decodedText || i.name === decodedText);
+    
+    if (item) {
+        if (scanMode === 'in') openManualAction('in', item.id);
+        else openManualAction('out', item.id);
+    } else {
+        alert('找不到此條碼對應的品項 (ID: ' + decodedText + ')');
+        // 可選擇開啟新物品建立流程
+    }
+}
+
+function stopScanner() {
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            document.getElementById('scanner-modal').style.display = 'none';
+            html5QrCode = null;
+        }).catch(err => console.error(err));
+    }
+}
+
+// --- 設定與工具函數 ---
+function switchTab(tab) {
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    document.getElementById('inventory-list').classList.add('hidden-section');
+    document.getElementById('logs-list').classList.add('hidden-section');
+    document.getElementById('settings-view').classList.add('hidden-section');
+    
+    if (tab === 'inventory') {
+        document.getElementById('inventory-list').classList.remove('hidden-section');
+        renderInventory();
+    } else if (tab === 'logs') {
+        document.getElementById('logs-list').classList.remove('hidden-section');
+        // 簡單展示，實際可從 inventoryData 或單獨 API 獲取
+        // 這裡為了演示，假設 logs 在全域變數中或由 loadData 一併載入
+        // 注意：原 doGet 有回傳 logs，需確保有存到全域變數
+        // 修改 loadData 以保存 logs
+        renderLogs(window.allLogs || []); 
+    } else if (tab === 'settings') {
+        document.getElementById('settings-view').classList.remove('hidden-section');
+    }
+}
+
+// 修正 loadData 以保存 logs
+const originalLoadData = loadData;
+loadData = async function() {
+    const sheetId = localStorage.getItem('sheet_id');
+    if (!sheetId) { showError('請先至設定頁面輸入 Google Sheet ID'); return; }
+    try {
+        const response = await fetch(`${SCRIPT_URL}?id=${sheetId}&t=${Date.now()}`);
+        if (!response.ok) throw new Error('網路回應失敗');
+        const result = await response.json();
+        if (result.success === false) throw new Error(result.error);
+        inventoryData = result.items || [];
+        window.allLogs = result.logs || []; // 保存日誌
+        settingsData = result.settings || {};
+        document.getElementById('sheet-id').value = sheetId;
+        document.getElementById('report-email').value = settingsData.reportEmail || 'mschen1116l@gmail.com';
+        document.getElementById('report-enabled').checked = settingsData.reportEnabled || false;
+        renderInventory();
+        hideError();
+    } catch (error) { showError(`載入失敗：${error.message}`); console.error(error); }
+}
+
+function openSettings() { switchTab('settings'); }
+
+function saveSettings() {
+    const sheetId = document.getElementById('sheet-id').value.trim();
+    const email = document.getElementById('report-email').value;
+    const enabled = document.getElementById('report-enabled').checked;
+    
+    if (!sheetId) { alert('請輸入 Sheet ID'); return; }
+    
+    localStorage.setItem('sheet_id', sheetId);
+    
+    // 傳送設定到後端
+    fetch(SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ type: '更新設定', reportEnabled: enabled, reportEmail: email })
+    }).then(() => {
+        alert('設定已儲存！');
+        loadData();
+    }).catch(err => alert('儲存失敗：' + err));
+}
+
+function setUser() {
+    const code = document.getElementById('user-code').value.trim();
+    if (code) {
+        currentUser = code;
+        localStorage.setItem('clinic_user', code);
+        document.getElementById('current-user-display').textContent = code;
+        alert(`使用者已設定為：${code}`);
+    }
+}
+
+function closeModal() { document.getElementById('action-modal').style.display = 'none'; }
+function showLoading(show) { document.getElementById('loading').style.display = show ? 'block' : 'none'; }
+function showError(msg) { document.getElementById('error-text').innerText = msg; document.getElementById('error-msg').classList.remove('hidden'); }
+function hideError() { document.getElementById('error-msg').classList.add('hidden'); }
+
+// 點擊遮罩關閉 Modal
+window.onclick = function(event) {
+    if (event.target == document.getElementById('action-modal')) closeModal();
+    if (event.target == document.getElementById('scanner-modal')) stopScanner();
+}
+</script>
 </body>
 </html>
