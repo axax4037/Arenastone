@@ -269,23 +269,38 @@
         let CURRENT_USER_NAME = "";
 
         // ==========================================
-        // 使用者驗證登入
+        // 🌟 修正版：使用者驗證登入 (強化除錯與 CORS 避讓)
         // ==========================================
         async function handlePortalLogin() {
             const acc = document.getElementById('loginAccount').value.trim();
-            const pwd = document.getElementById('loginPassword').value;
+            const pwd = document.getElementById('loginPassword').value.trim();
             const btn = document.getElementById('loginBtn');
 
-            if(!acc || !pwd) { alert("請輸入代號與密碼！"); return; }
+            if(!acc || !pwd) { 
+                alert("請輸入代號與密碼！"); 
+                return; 
+            }
             
-            btn.disabled = true; btn.innerText = "驗證身分中...";
+            btn.disabled = true; 
+            btn.innerText = "連線驗證中...";
+            
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
+                    // 💡 關鍵：必須使用 text/plain 以避免 Google Apps Script 的 CORS 預檢攔截
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'login', account: acc, password: pwd })
                 });
-                const res = await response.json();
+                
+                // 💡 取得原始回傳內容，幫助我們檢查是否為 HTML 錯誤頁面
+                const textResult = await response.text(); 
+                let res;
+                try {
+                    res = JSON.parse(textResult);
+                } catch (e) {
+                    throw new Error("後端未回傳 JSON，請檢查 API 網址是否正確並已重新部署！");
+                }
+
                 if(res.success) {
                     CURRENT_USER_NAME = res.name;
                     document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
@@ -295,9 +310,11 @@
                     alert("驗證失敗: " + res.error);
                 }
             } catch(e) {
-                alert("登入連線異常: " + e.message);
+                alert("登入連線異常: \n" + e.message);
+                console.error("Login Error:", e);
             } finally {
-                btn.disabled = false; btn.innerText = "驗證身分並登入";
+                btn.disabled = false; 
+                btn.innerText = "驗證身分並登入";
             }
         }
 
