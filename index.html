@@ -336,6 +336,48 @@
             document.getElementById('lowStockCount').textContent = lowStockCount;
         }
 
+// 🌟 修正：時間字串優化格式化工具
+        function formatToYYYYMMDD(dateStr) {
+            if (!dateStr || dateStr === '無' || dateStr === '未盤點') return '無';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr; // 若無法解析則原樣呈現
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                return `${yyyy}${mm}${dd}`;
+            } catch(e) { return dateStr; }
+        }
+
+        function formatToYYYYMMDDHHMM(dateStr) {
+            if (!dateStr || dateStr === '無' || dateStr === '未盤點' || dateStr === '無盤點紀錄') return '無';
+            try {
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return dateStr;
+                const yyyy = d.getFullYear();
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const dd = String(d.getDate()).padStart(2, '0');
+                const hh = String(d.getHours()).padStart(2, '0');
+                const min = String(d.getMinutes()).padStart(2, '0');
+                return `${yyyy}${mm}${dd} ${hh}${min}`;
+            } catch(e) { return dateStr; }
+        }
+
+        function cleanLotString(lotStr) {
+            if (!lotStr || lotStr === '無批號' || lotStr === '無') return '無';
+            // 若包含標準時間特徵，抽取出標準日期字串，否則回傳純字串
+            if (lotStr.includes('GMT')) {
+                try {
+                    const d = new Date(lotStr);
+                    if (!isNaN(d.getTime())) {
+                        return formatToYYYYMMDD(d);
+                    }
+                } catch(e) {}
+            }
+            return lotStr.replace(/['"]/g, '').trim(); // 去除單雙引號等不必要字元
+        }
+
+        // 🌟 核心修正：將批次明細完全改為「免彈窗、直接更新數量」
         function renderItems(items) {
             const container = document.getElementById('itemsList');
             if (items.length === 0) {
@@ -376,7 +418,7 @@
                             <div class="flex justify-between items-start mb-2">
                                 <div>
                                     <h3 class="font-bold text-slate-800 text-lg"><i class="fas fa-box text-blue-500 text-sm mr-1"></i> ${name}</h3>
-                                    <p class="text-xs text-gray-400 font-mono mt-0.5">常用ID參考: ${baseItem.id} | 分類: ${baseItem.category || '未分類'}</p>
+                                    <p class="text-xs text-gray-400 font-mono mt-0.5">分類: ${baseItem.category || '未分類'}</p>
                                 </div>
                                 <span class="px-2 py-1 text-xs rounded font-bold ${isLowStock ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
                                     ${statusText}
@@ -384,29 +426,43 @@
                             </div>
                             
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm bg-slate-50 p-3 rounded-lg border border-dashed">
-                                <div><div class="text-xs text-gray-500">當成品項總庫存</div><div class="font-bold text-lg ${isLowStock ? 'text-red-600' : 'text-blue-700'}">${totalQty}</div></div>
+                                <div><div class="text-xs text-gray-500">總庫存</div><div class="font-bold text-lg ${isLowStock ? 'text-red-600' : 'text-blue-700'}">${totalQty}</div></div>
                                 <div><div class="text-xs text-gray-500">安全設定量</div><div class="font-semibold text-gray-700">${baseItem.min_qty || '0'}</div></div>
-                                <div><div class="text-xs text-gray-500">FEFO 最早效期</div><div class="font-semibold ${earliestExpiry && earliestExpiry < today ? 'text-red-500' : 'text-gray-700'}">${earliestExpiry || '-'}</div></div>
-                                <div><div class="text-xs text-gray-500">最後盤點時間</div><div class="font-mono text-xs text-gray-600">${latestStocktake || '未盤點'}</div></div>
+                                <div><div class="text-xs text-gray-500">最早效期</div><div class="font-semibold text-gray-700">${formatToYYYYMMDD(earliestExpiry)}</div></div>
+                                <div><div class="text-xs text-gray-500">最後盤點</div><div class="font-mono text-xs text-gray-600">${formatToYYYYMMDDHHMM(latestStocktake)}</div></div>
                             </div>
                             
                             <div class="mt-2 pt-2 border-t">
-                                <p class="text-xs text-slate-400 font-bold mb-1.5">📦 該品項旗下所有批次明細：</p>
-                                <div class="space-y-1.5">
-                                    ${batches.map(b => {
-                                        const isFEFO = b.expiry === earliestExpiry && parseInt(b.qty) > 0;
+                                <p class="text-xs text-slate-400 font-bold mb-1.5">📦 批次直接管理（免彈窗，修改後點儲存即可）：</p>
+                                <div class="space-y-2">
+                                    ${batches.map((b, idx) => {
+                                        // 關鍵校正 1：時間過濾優化
+                                        const cleanLot = cleanLotString(b.lot);
+                                        const cleanExpiry = formatToYYYYMMDD(b.expiry);
+                                        const cleanCheck = formatToYYYYMMDDHHMM(b.last_stocktake);
+                                        const globalIndex = allItems.findIndex(i => i.id === b.id && i.lot === b.lot && i.expiry === b.expiry);
+
                                         return `
-                                            <div class="flex justify-between items-center text-xs p-2 rounded border ${isFEFO ? 'fefo-highlight border-amber-300 font-bold' : 'bg-white'}">
-                                                <span>批號：<span class="text-slate-700 font-mono">${b.lot || '無'}</span> | 效期：<span class="text-slate-700">${b.expiry || '無'}</span> ${isFEFO ? '⭐優先出庫' : ''}</span>
-                                                <span class="text-sm font-mono font-bold text-slate-800 bg-slate-200 px-2 py-0.5 rounded">${b.qty}</span>
+                                            <div class="p-3 rounded-xl border bg-slate-50/50 flex flex-col sm:flex-row justify-between gap-2">
+                                                <div class="text-xs space-y-0.5">
+                                                    <p class="font-mono text-gray-400">ID: ${b.id}</p>
+                                                    <p class="text-slate-700">批號: <span class="font-bold">${cleanLot}</span> | 效期: <span class="font-bold text-blue-700">${cleanExpiry}</span></p>
+                                                    <p class="text-[11px] text-gray-400">盤點時間: ${cleanCheck}</p>
+                                                </div>
+                                                <div class="flex items-center gap-1.5 self-end sm:self-center">
+                                                    <div class="w-20">
+                                                        <input type="number" id="inline-qty-${globalIndex}" value="${b.qty}" 
+                                                               class="w-full text-center border-2 border-slate-200 p-1.5 rounded-lg font-mono font-bold text-sm focus:border-blue-500 outline-none">
+                                                    </div>
+                                                    <button onclick="submitCardStocktake(${globalIndex})" id="inline-btn-${globalIndex}" 
+                                                            class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition">
+                                                        儲存
+                                                    </button>
+                                                </div>
                                             </div>
                                         `;
                                     }).join('')}
                                 </div>
-                            </div>
-                            
-                            <div class="flex gap-2 mt-4">
-                                <button onclick="showDetail('${baseItem.name}')" class="flex-1 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold shadow-sm">盤點與明細管理</button>
                             </div>
                         </div>
                     </div>
