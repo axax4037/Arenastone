@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>山石 | 智慧庫存管理系統</title>
+    <title>山石診所 | 智慧庫存管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://unpkg.com/html5-qrcode"></script>
@@ -57,7 +57,7 @@
     <!-- 主內容區 -->
     <main id="mainContent" class="max-w-6xl mx-auto px-4 py-6">
         
-        <!-- 🌟 補回分頁 1：首頁儀表板與總覽 -->
+        <!-- 分頁 1：首頁儀表板與總覽 -->
         <div id="dashboardView" class="space-y-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow">
@@ -107,7 +107,7 @@
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
-        <!-- 🌟 補回分頁 2：掃描作業頁面 -->
+        <!-- 分頁 2：掃描作業頁面 -->
         <div id="scannerView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>掃碼作業</h2>
@@ -136,7 +136,7 @@
                 </div>
                 
                 <div id="scanForm" class="hidden mt-4 space-y-3 p-4 bg-blue-50 rounded-lg border">
-                    <h3 class="font-bold text-slate-700">填寫表單明細</h3>
+                    <h3 id="scanFormTitle" class="font-bold text-slate-700">填寫表單明細 (入庫)</h3>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">品項名稱</label>
                         <input type="text" id="scanName" placeholder="品項名稱 (若為新品項請輸入)" class="w-full px-3 py-2 border rounded-lg bg-white">
@@ -162,7 +162,7 @@
             </div>
         </div>
 
-        <!-- 🌟 補回分頁 3：手動作業頁面 -->
+        <!-- 手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用辦理</h2>
@@ -208,7 +208,7 @@
             </div>
         </div>
 
-        <!-- 🌟 補回分頁 4：報表狀態分析頁面 -->
+        <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態分析</h2>
@@ -567,6 +567,20 @@
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.currentTarget.classList.add('active');
             if (tab === 'report') generateReport();
+        }
+
+        // ==========================================
+        // 🌟 核心修正：完美啟用掃描分頁的「入庫 / 領用」模式切換
+        // ==========================================
+        function setScanMode(mode) {
+            scanMode = mode;
+            
+            // 修正按鈕底色視覺效果
+            document.getElementById('scanInbound').className = `flex-1 py-2 rounded-lg ${mode === 'inbound' ? 'bg-blue-600 text-white font-bold' : 'bg-gray-200 text-gray-700'}`;
+            document.getElementById('scanOutbound').className = `flex-1 py-2 rounded-lg ${mode === 'outbound' ? 'bg-blue-600 text-white font-bold' : 'bg-gray-200 text-gray-700'}`;
+            
+            // 動態更動填寫表單的主標題說明文字
+            document.getElementById('scanFormTitle').innerText = `填寫表單明細 (${mode === 'inbound' ? '入庫' : '領用'})`;
         }
 
         function startScanner() {
