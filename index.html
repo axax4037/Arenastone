@@ -134,6 +134,7 @@
                     <p class="text-green-600 font-semibold">掃描成功：<span id="scannedCode"></span></p>
                 </div>
                 
+                <!-- 掃碼表單優化小標籤說明提示 -->
                 <div id="scanForm" class="hidden mt-4 space-y-3 p-4 bg-blue-50 rounded-lg border">
                     <h3 class="font-bold text-slate-700">填寫表單明細</h3>
                     <div>
@@ -216,28 +217,6 @@
         </div>
     </main>
 
-    <!-- 底部導航列 -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
-        <div class="max-w-6xl mx-auto flex justify-around py-2">
-            <button onclick="switchTab('dashboard')" class="nav-item active flex flex-col items-center py-2 px-4">
-                <i class="fas fa-home text-xl mb-1"></i>
-                <span class="text-xs">首頁</span>
-            </button>
-            <button onclick="switchTab('scanner')" class="nav-item flex flex-col items-center py-2 px-4">
-                <i class="fas fa-barcode text-xl mb-1"></i>
-                <span class="text-xs">掃碼</span>
-            </button>
-            <button onclick="switchTab('manual')" class="nav-item flex flex-col items-center py-2 px-4">
-                <i class="fas fa-edit text-xl mb-1"></i>
-                <span class="text-xs">手動作業</span>
-            </button>
-            <button onclick="switchTab('report')" class="nav-item flex flex-col items-center py-2 px-4">
-                <i class="fas fa-chart-bar text-xl mb-1"></i>
-                <span class="text-xs">報表</span>
-            </button>
-        </div>
-    </nav>
-
     <!-- 彈出視窗提示 -->
     <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-sm mx-4 w-full shadow-2xl">
@@ -269,36 +248,27 @@
         let CURRENT_USER_NAME = "";
 
         // ==========================================
-        // 🌟 修正版：使用者驗證登入 (強化除錯與 CORS 避讓)
+        // 使用者驗證登入 (突破 CORS 安全機制)
         // ==========================================
         async function handlePortalLogin() {
             const acc = document.getElementById('loginAccount').value.trim();
             const pwd = document.getElementById('loginPassword').value.trim();
             const btn = document.getElementById('loginBtn');
 
-            if(!acc || !pwd) { 
-                alert("請輸入代號與密碼！"); 
-                return; 
-            }
+            if(!acc || !pwd) { alert("請輸入代號與密碼！"); return; }
             
-            btn.disabled = true; 
-            btn.innerText = "連線驗證中...";
-            
+            btn.disabled = true; btn.innerText = "連線驗證中...";
             try {
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    // 💡 關鍵：必須使用 text/plain 以避免 Google Apps Script 的 CORS 預檢攔截
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                     body: JSON.stringify({ action: 'login', account: acc, password: pwd })
                 });
                 
-                // 💡 取得原始回傳內容，幫助我們檢查是否為 HTML 錯誤頁面
                 const textResult = await response.text(); 
                 let res;
-                try {
-                    res = JSON.parse(textResult);
-                } catch (e) {
-                    throw new Error("後端未回傳 JSON，請檢查 API 網址是否正確並已重新部署！");
+                try { res = JSON.parse(textResult); } catch (e) {
+                    throw new Error("後端未正確回傳 JSON 格式。請確認您的 Google 試算表 Items 權限是否開啟，並已重新發布部署！");
                 }
 
                 if(res.success) {
@@ -306,20 +276,19 @@
                     document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
                     document.getElementById('loginPortal').classList.add('hidden');
                     loadData(); 
+                    alert("🎉 歡迎回來，" + res.name + "！系統已就緒。");
                 } else {
-                    alert("驗證失敗: " + res.error);
+                    alert("⚠️ 登入失敗: " + res.error);
                 }
             } catch(e) {
-                alert("登入連線異常: \n" + e.message);
-                console.error("Login Error:", e);
+                alert("🚨 系統登入異常：\n" + e.message);
             } finally {
-                btn.disabled = false; 
-                btn.innerText = "驗證身分並登入";
+                btn.disabled = false; btn.innerText = "驗證身分並登入";
             }
         }
 
         // ==========================================
-        // 字串與時間精簡格式化處理工具
+        // 字串與時間精簡格式化處理工具 (不留多餘字元)
         // ==========================================
         function formatToYYYYMMDD(dateStr) {
             if (!dateStr || dateStr === '無' || dateStr === '未盤點') return '無';
@@ -329,7 +298,7 @@
                 const yyyy = d.getFullYear();
                 const mm = String(d.getMonth() + 1).padStart(2, '0');
                 const dd = String(d.getDate()).padStart(2, '0');
-                return `${yyyy}${mm}${dd}`; // 輸出純數字 YYYYMMDD[cite: 1]
+                return `${yyyy}${mm}${dd}`; 
             } catch(e) { return dateStr; }
         }
 
@@ -343,7 +312,7 @@
                 const dd = String(d.getDate()).padStart(2, '0');
                 const hh = String(d.getHours()).padStart(2, '0');
                 const min = String(d.getMinutes()).padStart(2, '0');
-                return `${yyyy}${mm}${dd} ${hh}${min}`; // 輸出純數字 YYYYMMDD HHMM[cite: 1]
+                return `${yyyy}${mm}${dd} ${hh}${min}`; 
             } catch(e) { return dateStr; }
         }
 
@@ -352,9 +321,7 @@
             if (lotStr.includes('GMT')) {
                 try {
                     const d = new Date(lotStr);
-                    if (!isNaN(d.getTime())) {
-                        return formatToYYYYMMDD(d);
-                    }
+                    if (!isNaN(d.getTime())) { return formatToYYYYMMDD(d); }
                 } catch(e) {}
             }
             return lotStr.replace(/['"]/g, '').trim(); 
@@ -364,7 +331,7 @@
             document.getElementById('loading-tag').classList.remove('hidden');
             try {
                 const response = await fetch(API_URL);
-                const data = await res = await response.json();
+                const data = await response.json();
                 allItems = data.items || [];
                 updateDashboard();
                 renderItems(allItems);
@@ -403,7 +370,7 @@
         }
 
         // ==========================================
-        // 卡片視覺與內嵌免彈窗直接盤點
+        // 🌟 卡片視覺與一體化內嵌直接盤點 (排除紅底干擾)
         // ==========================================
         function renderItems(items) {
             const container = document.getElementById('itemsList');
@@ -497,7 +464,7 @@
             container.innerHTML = html;
         }
 
-        // 卡片內直接儲存盤點
+        // 卡片內直接儲存盤點，無彈窗全新手機端體驗
         async function submitCardStocktake(index) {
             const btn = document.getElementById(`inline-btn-${index}`);
             const inputField = document.getElementById(`inline-qty-${index}`);
@@ -514,17 +481,11 @@
             
             try {
                 await submitData({
-                    type: '盤點', 
-                    id: item.id, 
-                    lot: item.lot, 
-                    expiry: item.expiry,
-                    qty: parseInt(newQty), 
-                    minQty: item.min_qty, 
-                    user: CURRENT_USER_NAME, 
-                    note: '主頁卡片免彈窗盤點'
+                    type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry,
+                    qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '主頁卡片免彈窗盤點'
                 });
                 await loadData(); 
-                alert("✨ 盤點儲存成功！");
+                alert("✨ 盤點修正已儲存！");
             } catch (error) {
                 alert('盤點失敗: ' + error.message);
                 btn.disabled = false; inputField.disabled = false;
@@ -706,7 +667,7 @@
             if (result !== 'Success') throw new Error(result);
         }
 
-        // 🌟 核心修正：採用 YYYYMMDD 純數字邏輯進行財務及效期預警抓取
+        // 採用純數字 YYYYMMDD 精準預警比對
         function generateReport() {
             const container = document.getElementById('reportContent');
             const today = new Date();
