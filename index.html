@@ -228,6 +228,7 @@
     </div>
 
     <script>
+        // ✅ 已確認正確的 API URL
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec';
         
         let currentUser = null;
@@ -263,13 +264,16 @@
 
             errorEl.textContent = '登入中...';
             errorEl.classList.remove('hidden');
+            errorEl.style.color = '#3b82f6'; // 藍色表示進行中
 
             fetch(SCRIPT_URL, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'login', account, password })
             })
             .then(res => res.json())
             .then(data => {
+                console.log('登入回應:', data); // 除錯用
                 if (data.success) {
                     currentUser = data.user;
                     authToken = data.token;
@@ -279,10 +283,13 @@
                     loadData();
                 } else {
                     errorEl.textContent = data.error || '登入失敗';
+                    errorEl.style.color = '#ef4444';
                 }
             })
             .catch(err => {
+                console.error('登入錯誤:', err);
                 errorEl.textContent = '網路錯誤：' + err.message;
+                errorEl.style.color = '#ef4444';
             });
         }
 
@@ -306,6 +313,8 @@
                 const response = await fetch(`${SCRIPT_URL}?action=getData&t=${new Date().getTime()}`);
                 const data = await response.json();
                 
+                console.log('資料載入:', data); // 除錯用
+
                 if (data.success) {
                     allItems = data.items || [];
                     renderInventory();
@@ -316,12 +325,12 @@
                         document.getElementById('settingEmail').value = data.settings.reportEmail;
                     }
                 } else {
-                    throw new Error(data.error);
+                    throw new Error(data.error || '資料載入失敗');
                 }
             } catch (error) {
                 console.error(error);
                 document.getElementById('inventoryList').innerHTML = `<div class="text-red-500 text-center p-4">載入失敗：${error.message}<br><button onclick="loadData()" class="mt-2 text-blue-500 underline">重試</button></div>`;
-                if (error.message.includes('未授權')) {
+                if (error.message.includes('未授權') || error.message.includes('AUTH_ERROR')) {
                     logout();
                 }
             }
@@ -510,6 +519,7 @@
             try {
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
@@ -585,6 +595,7 @@
             try {
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
@@ -615,6 +626,7 @@
 
             fetch(SCRIPT_URL, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             })
             .then(res => res.json())
