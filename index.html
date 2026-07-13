@@ -19,11 +19,35 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen pb-20">
+
+    <!-- 🌟 新增：全螢幕使用者登入限制區塊 -->
+    <div id="loginPortal" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <div class="text-center">
+                <i class="fas fa-clinic-medical text-4xl text-blue-600 mb-2"></i>
+                <h2 class="text-xl font-bold text-gray-800">聖星智慧庫存登入</h2>
+                <p class="text-xs text-gray-400 mt-1">請輸入 Google 表單 Items 試算表設定之代號</p>
+            </div>
+            <div class="space-y-3 pt-2">
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">使用者代號</label>
+                    <input type="text" id="loginAccount" class="w-full border-2 p-2.5 rounded-xl outline-none focus:border-blue-500 font-bold" placeholder="例如: admin">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-600 mb-1">密碼</label>
+                    <input type="password" id="loginPassword" class="w-full border-2 p-2.5 rounded-xl outline-none focus:border-blue-500 font-bold" placeholder="••••">
+                </div>
+                <button onclick="handlePortalLogin()" id="loginBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-bold transition">驗證身分並登入</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 頂部導航 -->
     <header class="bg-white shadow-sm sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-clinic-medical mr-2"></i>聖星診所智慧庫存</h1>
             <div class="flex items-center gap-2">
+                <span id="currentUserTag" class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold">👤 未登入</span>
                 <span id="loading-tag" class="text-gray-400 text-sm hidden animate-pulse">連線中...</span>
                 <button onclick="showSettings()" class="text-gray-600 hover:text-blue-600"><i class="fas fa-cog text-xl"></i></button>
             </div>
@@ -78,7 +102,7 @@
                 </div>
             </div>
 
-            <!-- 品項列表 (已升級為同名合併多批次卡片) -->
+            <!-- 品項列表 -->
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
@@ -100,7 +124,6 @@
                     </div>
                 </div>
                 
-                <!-- 手動手動縮放控制滑桿 -->
                 <div class="p-3 bg-slate-900 rounded-lg mt-2 flex items-center gap-3 text-white">
                     <i class="fas fa-search-minus text-sm"></i>
                     <input type="range" id="zoom-slider" min="1" max="5" step="0.1" value="1" class="w-full h-2 rounded-lg cursor-pointer appearance-none bg-gray-700">
@@ -116,7 +139,6 @@
                     <input type="text" id="scanLot" placeholder="批號 (LOT) 留空自動帶入效期" class="w-full px-3 py-2 border rounded-lg bg-white uppercase">
                     <input type="date" id="scanExpiry" placeholder="有效日期" class="w-full px-3 py-2 border rounded-lg bg-white">
                     <input type="number" id="scanQty" placeholder="數量 *" class="w-full px-3 py-2 border rounded-lg bg-white font-bold">
-                    <input type="text" id="scanUser" placeholder="操作人 *" class="w-full px-3 py-2 border rounded-lg bg-white">
                     <textarea id="scanNote" placeholder="備註" class="w-full px-3 py-2 border rounded-lg bg-white" rows="2"></textarea>
                     <button onclick="submitScan()" id="scanSubmitBtn" class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold">確認提交</button>
                 </div>
@@ -139,7 +161,6 @@
                     <input type="date" id="manualExpiry" placeholder="效期" class="w-full px-3 py-2 border rounded-lg">
                     <input type="number" id="manualQty" placeholder="數量 *" class="w-full px-3 py-2 border rounded-lg font-bold">
                     <input type="number" id="manualPrice" placeholder="單價（選填）" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="text" id="manualUser" placeholder="操作人 *" class="w-full px-3 py-2 border rounded-lg">
                     <textarea id="manualNote" placeholder="備註" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
                     <button onclick="submitManual()" id="manualSubmitBtn" class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold">提交</button>
                 </div>
@@ -208,16 +229,22 @@
             <h3 class="text-xl font-bold mb-4 text-blue-800 border-b pb-2">📦 庫存品項明細管理</h3>
             <div id="detailContent" class="space-y-3 max-h-[350px] overflow-y-auto"></div>
             
-            <div id="stocktakeInlineForm" class="hidden mt-4 p-4 bg-green-50 rounded-lg border border-green-200 space-y-3">
-                <h4 class="font-bold text-green-800 text-sm">✏️ 進行特定批次實盤修正</h4>
-                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600">
-                    <div>批號: <span id="stLot" class="font-bold"></span></div>
-                    <div>效期: <span id="stExpiry" class="font-bold"></span></div>
+            <!-- 📱 手機最佳化：精簡化盤點輸入介面 -->
+            <div id="stocktakeInlineForm" class="hidden mt-4 p-4 bg-green-50 rounded-lg border-2 border-green-300 space-y-3 shadow-inner">
+                <h4 class="font-bold text-green-800 text-sm flex items-center gap-1"><i class="fas fa-edit"></i> 手機即時盤點數值修正</h4>
+                <div class="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-white p-2 rounded border">
+                    <div>批號: <span id="stLot" class="font-bold text-slate-700"></span></div>
+                    <div>效期: <span id="stExpiry" class="font-bold text-slate-700"></span></div>
                 </div>
-                <input type="number" id="stQty" placeholder="實盤現存數量 *" class="w-full p-2 border rounded bg-white font-bold">
-                <input type="number" id="stMinQty" placeholder="安全門檻值" class="w-full p-2 border rounded bg-white">
-                <input type="text" id="stUser" placeholder="盤點操作人 *" class="w-full p-2 border rounded bg-white">
-                <button onclick="submitInlineStocktake()" id="stSubmitBtn" class="w-full bg-green-600 text-white py-2 rounded font-bold">儲存盤點結果</button>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">當前實盤現存總數 *</label>
+                    <input type="number" id="stQty" class="w-full p-3 border-2 border-green-200 rounded-xl bg-white font-mono font-bold text-lg text-center text-green-700 focus:border-green-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">安全警示門檻值</label>
+                    <input type="number" id="stMinQty" class="w-full p-2 border rounded bg-white text-center font-bold">
+                </div>
+                <button onclick="submitInlineStocktake()" id="stSubmitBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold shadow-md">儲存此批盤點結果</button>
             </div>
 
             <div class="flex gap-2 mt-5">
@@ -230,10 +257,42 @@
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec";
         let allItems = [], filteredItems = [], scanMode = 'inbound', scannedData = null, html5QrCode = null, isScanningActive = false;
+        
+        // 🌟 新增全域操作者變數
+        let CURRENT_USER_NAME = "";
 
-        document.addEventListener('DOMContentLoaded', () => {
-            loadData();
-        });
+        // ==========================================
+        // 🌟 使用者代號身分驗證登入
+        // ==========================================
+        async function handlePortalLogin() {
+            const acc = document.getElementById('loginAccount').value.trim();
+            const pwd = document.getElementById('loginPassword').value;
+            const btn = document.getElementById('loginBtn');
+
+            if(!acc || !pwd) { alert("請輸入代號與密碼！"); return; }
+            
+            btn.disabled = true; btn.innerText = "驗證身分中...";
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({ action: 'login', account: acc, password: pwd })
+                });
+                const res = await response.json();
+                if(res.success) {
+                    CURRENT_USER_NAME = res.name;
+                    document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
+                    document.getElementById('loginPortal').classList.add('hidden'); // 關閉全畫面鎖
+                    loadData(); // 成功登入後抓取表單資料
+                } else {
+                    alert("驗證失敗: " + res.error);
+                }
+            } catch(e) {
+                alert("登入連線異常: " + e.message);
+            } finally {
+                btn.disabled = false; btn.innerText = "驗證身分並登入";
+            }
+        }
 
         async function loadData() {
             document.getElementById('loading-tag').classList.remove('hidden');
@@ -277,7 +336,6 @@
             document.getElementById('lowStockCount').textContent = lowStockCount;
         }
 
-        // 🌟 核心修正：相同名稱品項以同一張卡片顯示，明細折疊管理
         function renderItems(items) {
             const container = document.getElementById('itemsList');
             if (items.length === 0) {
@@ -411,7 +469,6 @@
             if (tab === 'report') generateReport();
         }
 
-        // 🌟 修正詳情彈窗：同一品項下的多批次盤點
         function showDetail(name) {
             const batches = allItems.filter(i => i.name === name);
             if (batches.length === 0) return;
@@ -421,7 +478,6 @@
                 <p><strong>品項名稱：</strong>${name}</p>
                 <p><strong>大分類：</strong>${baseItem.category || '未分類'}</p>
                 <p><strong>安全庫存標準：</strong>${baseItem.min_qty || '0'}</p>
-                <p><strong>預設供應商：</strong>${baseItem.vendor || '-'}</p>
             </div><p class="font-bold text-slate-700 mt-4 mb-2 text-xs">請選擇下方特定的批號進行實盤更新：</p><div class="space-y-2">`;
             
             batches.forEach((b) => {
@@ -443,7 +499,7 @@
             
             document.getElementById('detailContent').innerHTML = html;
             document.getElementById('detailModal').dataset.currentName = name;
-            document.getElementById('stocktakeInlineForm').classList.add('hidden'); // 隱藏盤點小表單
+            document.getElementById('stocktakeInlineForm').classList.add('hidden'); 
             document.getElementById('detailModal').classList.remove('hidden');
             document.getElementById('detailModal').classList.add('flex');
         }
@@ -456,6 +512,8 @@
             document.getElementById('stQty').value = qty;
             document.getElementById('stMinQty').value = minQty || 5;
             form.classList.remove('hidden');
+            // 📱 手機端極佳化：開啟時自動將畫面平滑捲動聚焦到輸入框上
+            setTimeout(() => { form.scrollIntoView({ behavior: 'smooth' }); }, 100);
         }
 
         async function submitInlineStocktake() {
@@ -463,21 +521,21 @@
             const btn = document.getElementById('stSubmitBtn');
             const qty = document.getElementById('stQty').value;
             const minQty = document.getElementById('stMinQty').value;
-            const user = document.getElementById('stUser').value.trim();
 
-            if (!qty || !user) { showAlert("請輸入實盤數量與操作人！"); return; }
+            if (!qty) { showAlert("請輸入實盤數量！"); return; }
             
             btn.disabled = true; btn.innerText = "變更寫入中...";
             try {
+                // 💡 核心優化：操作人已登入代碼自動帶入 (CURRENT_USER_NAME)
                 await submitData({
                     type: '盤點', id: form.dataset.id, lot: form.dataset.lot, expiry: form.dataset.expiry,
-                    qty: parseInt(qty), minQty: parseInt(minQty), user: user, note: '即時名細盤點'
+                    qty: parseInt(qty), minQty: parseInt(minQty), user: CURRENT_USER_NAME, note: '手機即時明細盤點'
                 });
                 showAlert('盤點資料上傳成功！');
                 closeModals(); loadData();
             } catch (error) {
                 showAlert('寫入失敗: ' + error.message);
-            } finally { btn.disabled = false; btn.innerText = "儲儲盤點結果"; }
+            } { btn.disabled = false; btn.innerText = "儲存此批盤點結果"; }
         }
 
         function quickAction(type) {
@@ -492,17 +550,8 @@
             }
         }
 
-        // ==========================================
-        // 🌟 掃描器核心安全升級（強制先關機再警報）
-        // ==========================================
-        function setScanMode(mode) {
-            scanMode = mode;
-            document.getElementById('scanInbound').className = `flex-1 py-2 rounded-lg ${mode === 'inbound' ? 'bg-blue-600 text-white font-bold' : 'bg-gray-200 text-gray-700'}`;
-            document.getElementById('scanOutbound').className = `flex-1 py-2 rounded-lg ${mode === 'outbound' ? 'bg-blue-600 text-white font-bold' : 'bg-gray-200 text-gray-700'}`;
-        }
-
         function startScanner() {
-            if (html5QrCode) { html5QrCode.stop().catch(()=>{}); html5QrCode = null; }
+            if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; }
             document.getElementById('scannerPlaceholder').classList.add('hidden');
             
             html5QrCode = new Html5Qrcode('reader');
@@ -517,7 +566,6 @@
                 if (!isScanningActive) return; 
                 isScanningActive = false;
 
-                // 🛡️ 強力安全閥：發現網址，必須先 stop 鏡頭再 alert，徹底阻斷無窮迴圈
                 if (/^(https?:\/\/|www\.)/i.test(decodedText)) {
                     html5QrCode.stop().then(() => {
                         html5QrCode = null;
@@ -535,7 +583,6 @@
                     document.getElementById('scanForm').classList.remove('hidden');
                     scannedData = decodedText;
 
-                    // 自動比對是否有既有品項，帶出品名
                     const matched = allItems.find(i => i.id === decodedText);
                     if (matched) {
                         document.getElementById('scanName').value = matched.name;
@@ -546,7 +593,6 @@
                     }
                 }).catch(()=>{});
             }, () => {}).then(() => {
-                // 綁定手動縮放控制滑桿
                 document.getElementById('zoom-slider').oninput = function() {
                     const video = document.querySelector('video');
                     if (video && video.srcObject) {
@@ -565,16 +611,16 @@
             const name = document.getElementById('scanName').value.trim();
             const lot = document.getElementById('scanLot').value.trim();
             const expiry = document.getElementById('scanExpiry').value;
-            const user = document.getElementById('scanUser').value.trim();
             const note = document.getElementById('scanNote').value;
             
-            if (!qty || !scannedData || !user) { showAlert('請確認數量、操作人欄位皆已填寫並完成掃描'); return; }
+            if (!qty || !scannedData) { showAlert('請確認填寫數量並完成條碼掃描'); return; }
             
             btn.disabled = true; btn.innerText = "資料上傳中...";
             try {
+                // 💡 核心優化：操作人已登入代碼自動帶入 (CURRENT_USER_NAME)
                 await submitData({
                     type: scanMode === 'inbound' ? '入庫' : '領用', id: scannedData, name: name,
-                    lot: lot, expiry: expiry, qty: parseInt(qty), user: user, note: note
+                    lot: lot, expiry: expiry, qty: parseInt(qty), user: CURRENT_USER_NAME, note: note
                 });
                 showAlert('掃碼作業提交成功！');
                 document.getElementById('scanForm').classList.add('hidden');
@@ -594,17 +640,17 @@
             const expiry = document.getElementById('manualExpiry').value;
             const qty = document.getElementById('manualQty').value;
             const price = document.getElementById('manualPrice').value;
-            const user = document.getElementById('manualUser').value.trim();
             const note = document.getElementById('manualNote').value;
             
-            if (!id || !qty || !user) { showAlert('請確實填寫 品項ID、數量與操作人！'); return; }
-            if (type === '入庫' && !expiry) { showAlert('新建入庫品項時，建議填寫有效日期以供效期追蹤管理。'); return; }
+            if (!id || !qty) { showAlert('請確實填寫 品項ID和數量！'); return; }
+            if (type === '入庫' && !expiry) { showAlert('新建入庫品項時，建議填寫有效日期。'); return; }
             
             btn.disabled = true; btn.innerText = "上傳處理中...";
             try {
+                // 💡 核心優化：操作人已登入代碼自動帶入 (CURRENT_USER_NAME)
                 await submitData({
                     type: type, id: id, name: name, lot: lot, expiry: expiry,
-                    qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: user, note: note
+                    qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: note
                 });
                 showAlert('手動單據提交成功！');
                 document.getElementById('manualId').value = ''; document.getElementById('manualName').value = '';
@@ -634,7 +680,6 @@
             
             const expiringSoon = allItems.filter(i => i.expiry && parseInt(i.qty) > 0 && i.expiry <= alertDate);
             
-            // 計算總量低於安全庫存的品項
             const totalsMap = new Map();
             allItems.forEach(i => {
                 if(!totalsMap.has(i.name)) totalsMap.set(i.name, { qty: 0, min: i.min_qty || 0 });
@@ -664,7 +709,7 @@
         }
 
         function saveSettings() {
-            showAlert('設定儲存成功（已寫入系統內部變數）');
+            showAlert('設定儲存成功（已同步系統內部變數）');
             closeModals();
         }
 
