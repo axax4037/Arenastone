@@ -215,7 +215,7 @@
         // 載入資料
         async function loadData() {
             try {
-                const response = await fetch(`https://script.google.com/macros/s/AKfycbwKxH8vJ9Z2L3mN4oP5qR6sT7uV8wX9yA0zB1cC2dD3eE4fF5gG6hH7iI8jJ9kK0lL1mM2nN3oO4pP5qQ6rR7sS8tT9uU0vV1wW2xX3yY4zZ5/exec`);
+                const response = await fetch(`https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec`);
                 const data = await response.json();
                 allItems = data.items || [];
                 updateDashboard();
@@ -607,7 +607,7 @@
 
         // 提交資料到 Google Apps Script
         async function submitData(params) {
-            const response = await fetch(`https://script.google.com/macros/s/AKfycbwKxH8vJ9Z2L3mN4oP5qR6sT7uV8wX9yA0zB1cC2dD3eE4fF5gG6hH7iI8jJ9kK0lL1mM2nN3oO4pP5qQ6rR7sS8tT9uU0vV1wW2xX3yY4zZ5/exec`, {
+            const response = await fetch(`https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params)
