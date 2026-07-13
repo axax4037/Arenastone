@@ -654,19 +654,45 @@
             if (result !== 'Success') throw new Error(result);
         }
 
+// 🌟 修正版：統一使用純數字 YYYYMMDD 進行精準效期預警比對
         function generateReport() {
             const container = document.getElementById('reportContent');
-            const today = new Date().toISOString().split('T')[0];
-            const oneMonthLater = new Date(); oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
-            const alertDate = oneMonthLater.toISOString().split('T')[0];
             
-            const expiringSoon = allItems.filter(i => i.expiry && parseInt(i.qty) > 0 && i.expiry <= alertDate);
+            // 1. 取得今天的純數字 YYYYMMDD
+            const today = new Date();
+            const formatNum = (d) => {
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                const borderD = String(d.getDate()).padStart(2, '0');
+                return parseInt(`${y}${m}${borderD}`);
+            };
             
+            const todayNum = formatNum(today);
+            
+            // 2. 取得一個月後的純數字 YYYYMMDD
+            const oneMonthLater = new Date();
+            oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+            const oneMonthLaterNum = formatNum(oneMonthLater);
+            
+            // 3. 過濾出符合「已有庫存」且「效期介於今天到一個月內」的批次
+            const expiringSoon = allItems.filter(i => {
+                const cleanQty = parseInt(i.qty) || 0;
+                if (!i.expiry || cleanQty <= 0) return false;
+                
+                // 將資料庫帶出的效期轉為純數字進行比對
+                const itemExpiryNum = parseInt(formatToYYYYMMDD(i.expiry));
+                if (isNaN(itemExpiryNum)) return false;
+                
+                return itemExpiryNum >= todayNum && itemExpiryNum <= oneMonthLaterNum;
+            });
+            
+            // 4. 計算總量低於安全庫存的品項
             const totalsMap = new Map();
             allItems.forEach(i => {
                 if(!totalsMap.has(i.name)) totalsMap.set(i.name, { qty: 0, min: i.min_qty || 0 });
                 totalsMap.get(i.name).qty += (parseInt(i.qty) || 0);
             });
+            
             let lowStockHtml = '';
             totalsMap.forEach((v, name) => {
                 if(v.qty <= v.min) lowStockHtml += `<p class="text-sm font-semibold">• ${name} : 目前庫存 ${v.qty} (門檻 ${v.min})</p>`;
@@ -675,7 +701,9 @@
             container.innerHTML = `
                 <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
                     <h4 class="font-bold text-amber-800 mb-2"><i class="fas fa-history"></i> 效期預警（一個月內到期批次）</h4>
-                    ${expiringSoon.length > 0 ? expiringSoon.map(i => `<p class="text-sm">• ${i.name} (批號:${cleanLotString(i.lot)}): 剩餘 ${i.qty} 個，將於 <span class="text-red-600 font-bold">${formatToYYYYMMDD(i.expiry)}</span> 到期</p>`).join('') : '<p class="text-sm text-gray-500">👍 目前無即將過期耗材。</p>'}
+                    ${expiringSoon.length > 0 ? expiringSoon.map(i => `
+                        <p class="text-sm">• ${i.name} (批號: <span class="font-mono font-bold">${cleanLotString(i.lot)}</span>): 剩餘 ${i.qty} 個，將於 <span class="text-red-600 font-bold">${formatToYYYYMMDD(i.expiry)}</span> 到期</p>
+                    `).join('') : '<p class="text-sm text-gray-500">👍 目前無即將過期耗材。</p>'}
                 </div>
                 <div class="p-4 bg-red-50 rounded-lg border border-red-200 mt-3">
                     <h4 class="font-bold text-red-800 mb-2"><i class="fas fa-exclamation-circle"></i> 低庫存警示品項總覽</h4>
