@@ -18,7 +18,7 @@
         .nav-item i { font-size: 1.25rem; margin-bottom: 4px; }
         .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
         .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; }
-        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: opacity 0.2s; text-align: center; cursor: pointer; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: opacity 0.2s; text-align: center; cursor: pointer; border: none; }
         .btn:active { opacity: 0.7; }
         .btn-primary { background-color: #3b82f6; color: white; }
         .btn-success { background-color: #10b981; color: white; }
@@ -26,41 +26,40 @@
         .input-field { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; }
         .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
         .badge-low { background-color: #fee2e2; color: #ef4444; }
-        #reader { width: 100%; border-radius: 8px; overflow: hidden; }
         .loading { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* 登入遮罩 */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6; z-index: 9999; display: flex; justify-content: center; align-items: center; }
-        .login-box { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6; z-index: 100; display: flex; justify-content: center; align-items: center; }
     </style>
 </head>
 <body>
 
-    <!-- 登入遮罩 -->
-    <div id="login-overlay">
-        <div class="login-box">
-            <h2 class="text-2xl font-bold mb-6 text-gray-800"><i class="fas fa-clinic-medical text-blue-500"></i> 聖星診所</h2>
-            <p class="text-gray-500 mb-6">庫存管理系統</p>
+    <!-- 登入畫面 -->
+    <div id="login-screen">
+        <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-sm">
+            <h2 class="text-2xl font-bold text-center mb-6 text-gray-800"><i class="fas fa-clinic-medical text-blue-500"></i> 聖星診所</h2>
+            <p class="text-center text-gray-500 mb-6 text-sm">庫存管理系統</p>
             <input type="text" id="login-account" class="input-field" placeholder="帳號 (代號)">
             <input type="password" id="login-password" class="input-field" placeholder="密碼">
-            <button onclick="handleLogin()" class="btn btn-primary w-full mb-4">登入</button>
-            <p id="login-error" class="text-red-500 text-sm hidden"></p>
+            <button onclick="handleLogin()" class="btn btn-primary w-full py-3 text-lg">登入</button>
+            <p id="login-error" class="text-red-500 text-sm mt-3 text-center hidden"></p>
+            <p class="text-xs text-gray-400 mt-6 text-center">預設帳號：admin / 密碼：1234</p>
         </div>
     </div>
 
-    <!-- 主介面 (預設隱藏) -->
-    <div id="main-app" class="hidden">
+    <!-- 主應用程式 (預設隱藏) -->
+    <div id="app-container" class="hidden">
         <header class="bg-white shadow-sm sticky top-0 z-40">
             <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
                 <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-boxes text-blue-500 mr-2"></i>庫存管理</h1>
                 <div class="flex items-center gap-3">
-                    <span class="text-sm text-gray-600 hidden md:inline"><i class="fas fa-user"></i> <span id="user-display-name"></span></span>
-                    <button onclick="logout()" class="text-xs text-red-500 hover:underline">登出</button>
+                    <span class="text-xs text-gray-600 hidden sm:inline">歡迎，<span id="user-display-name" class="font-bold"></span></span>
+                    <button onclick="logout()" class="text-xs text-red-500 border border-red-200 px-2 py-1 rounded hover:bg-red-50">登出</button>
                 </div>
             </div>
         </header>
 
         <main class="max-w-5xl mx-auto px-4 py-6">
+            
             <!-- 庫存頁面 -->
             <div id="page-inventory" class="page-section">
                 <div class="flex justify-between items-center mb-4">
@@ -84,7 +83,7 @@
             <div id="page-scan" class="page-section hidden">
                 <h2 class="text-lg font-bold text-gray-700 mb-4">掃碼作業</h2>
                 <div class="card p-4 text-center">
-                    <div id="reader" class="mb-4"></div>
+                    <div id="reader" class="mb-4 bg-black rounded-lg overflow-hidden"></div>
                     <p class="text-gray-500 mb-4">將鏡頭對準條碼或 QR Code</p>
                     <div class="grid grid-cols-2 gap-3">
                         <button onclick="startScan('in')" class="btn btn-success"><i class="fas fa-arrow-down"></i> 掃碼入庫</button>
@@ -132,6 +131,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Google Sheet ID</label>
                         <div class="bg-gray-100 p-2 rounded text-gray-600 font-mono text-sm break-all">1yW1a5bmSTGsHhQlLE1T2-cj1bsM8YdKAMtMV-rY2_mk</div>
+                        <p class="text-xs text-green-600 mt-1"><i class="fas fa-check-circle"></i> 已自動連結</p>
                     </div>
                     
                     <div>
@@ -147,22 +147,26 @@
         <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-lg z-50 pb-safe">
             <div class="max-w-5xl mx-auto flex justify-around items-center h-16">
                 <div class="nav-item active" onclick="switchPage('inventory', this)">
-                    <i class="fas fa-boxes"></i><span>庫存</span>
+                    <i class="fas fa-boxes"></i>
+                    <span>庫存</span>
                 </div>
                 <div class="nav-item" onclick="switchPage('scan', this)">
-                    <i class="fas fa-qrcode"></i><span>掃碼</span>
+                    <i class="fas fa-qrcode"></i>
+                    <span>掃碼</span>
                 </div>
                 <div class="nav-item" onclick="switchPage('reports', this)">
-                    <i class="fas fa-chart-line"></i><span>報表</span>
+                    <i class="fas fa-chart-line"></i>
+                    <span>報表</span>
                 </div>
                 <div class="nav-item" onclick="switchPage('settings', this)">
-                    <i class="fas fa-cog"></i><span>設定</span>
+                    <i class="fas fa-cog"></i>
+                    <span>設定</span>
                 </div>
             </div>
         </nav>
     </div>
 
-    <!-- Modals (Alert, Action, NewItem) -->
+    <!-- Modals -->
     <div id="alert-modal" class="modal">
         <div class="modal-content text-center">
             <h3 id="alert-title" class="text-lg font-bold mb-2">提示</h3>
@@ -179,10 +183,10 @@
             <input type="hidden" id="action-expiry">
             <input type="hidden" id="action-name">
             
-            <div class="mb-3 bg-gray-50 p-3 rounded">
-                <div class="flex justify-between"><span class="text-sm text-gray-600">目前庫存:</span> <span id="modal-current-qty" class="font-bold text-blue-600"></span></div>
-                <div class="flex justify-between text-xs mt-1"><span class="text-gray-500">批號:</span> <span id="modal-lot" class="font-mono"></span></div>
-                <div class="flex justify-between text-xs mt-1"><span class="text-gray-500">效期:</span> <span id="modal-expiry"></span></div>
+            <div class="mb-3 bg-gray-50 p-2 rounded text-sm">
+                <div>目前庫存：<span id="modal-current-qty" class="font-bold text-blue-600"></span></div>
+                <div>批號：<span id="modal-lot" class="font-mono text-xs"></span></div>
+                <div>效期：<span id="modal-expiry" class="text-xs"></span></div>
             </div>
 
             <label class="block text-sm font-medium text-gray-700 mb-1">數量</label>
@@ -226,114 +230,100 @@
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec';
         
-        let allItems = [];
-        let settings = {};
         let currentUser = null;
         let authToken = null;
+        let allItems = [];
         let html5QrCode = null;
 
-        // 初始化檢查
+        // 初始化
         document.addEventListener('DOMContentLoaded', () => {
-            const savedToken = localStorage.getItem('authToken');
-            const savedUser = localStorage.getItem('currentUser');
+            const savedUser = localStorage.getItem('clinic_user');
+            const savedToken = localStorage.getItem('clinic_token');
             
-            if (savedToken && savedUser) {
-                authToken = savedToken;
+            if (savedUser && savedToken) {
                 currentUser = JSON.parse(savedUser);
-                showMainApp();
+                authToken = savedToken;
+                showApp();
                 loadData();
             } else {
-                document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('login-screen').classList.remove('hidden');
             }
         });
 
         function handleLogin() {
-            const account = document.getElementById('login-account').value;
-            const password = document.getElementById('login-password').value;
+            const account = document.getElementById('login-account').value.trim();
+            const password = document.getElementById('login-password').value.trim();
             const errorEl = document.getElementById('login-error');
             
             if (!account || !password) {
-                errorEl.textContent = "請輸入帳號和密碼";
+                errorEl.textContent = '請輸入帳號和密碼';
                 errorEl.classList.remove('hidden');
                 return;
             }
 
-            errorEl.classList.add('hidden');
-            errorEl.textContent = "登入中...";
+            errorEl.textContent = '登入中...';
             errorEl.classList.remove('hidden');
 
             fetch(SCRIPT_URL, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: 'login', account, password })
+                body: JSON.stringify({ action: 'login', account, password })
             })
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    authToken = data.token;
                     currentUser = data.user;
-                    localStorage.setItem('authToken', authToken);
-                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    showMainApp();
+                    authToken = data.token;
+                    localStorage.setItem('clinic_user', JSON.stringify(currentUser));
+                    localStorage.setItem('clinic_token', authToken);
+                    showApp();
                     loadData();
                 } else {
-                    errorEl.textContent = data.error || "登入失敗";
+                    errorEl.textContent = data.error || '登入失敗';
                 }
             })
             .catch(err => {
-                errorEl.textContent = "網路錯誤：" + err.message;
+                errorEl.textContent = '網路錯誤：' + err.message;
             });
         }
 
         function logout() {
-            if(confirm("確定要登出嗎？")) {
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('currentUser');
+            if(confirm('確定要登出嗎？')) {
+                localStorage.removeItem('clinic_user');
+                localStorage.removeItem('clinic_token');
                 location.reload();
             }
         }
 
-        function showMainApp() {
-            document.getElementById('login-overlay').style.display = 'none';
-            document.getElementById('main-app').classList.remove('hidden');
+        function showApp() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('user-display-name').textContent = currentUser.name;
         }
 
         async function loadData() {
             showLoading('inventoryList');
             try {
-                const response = await fetch(`${SCRIPT_URL}?t=${new Date().getTime()}`);
+                const response = await fetch(`${SCRIPT_URL}?action=getData&t=${new Date().getTime()}`);
                 const data = await response.json();
                 
-                if (data.success === false) throw new Error(data.error || 'API 錯誤');
-                
-                allItems = data.items || [];
-                settings = data.settings || {};
-                
-                if(settings.reportEmail) document.getElementById('settingEmail').value = settings.reportEmail;
-
-                renderInventory();
-                renderCategories();
-                renderLogs(data.logs || []);
+                if (data.success) {
+                    allItems = data.items || [];
+                    renderInventory();
+                    renderCategories();
+                    renderLogs(data.logs || []);
+                    
+                    if (data.settings && data.settings.reportEmail) {
+                        document.getElementById('settingEmail').value = data.settings.reportEmail;
+                    }
+                } else {
+                    throw new Error(data.error);
+                }
             } catch (error) {
                 console.error(error);
                 document.getElementById('inventoryList').innerHTML = `<div class="text-red-500 text-center p-4">載入失敗：${error.message}<br><button onclick="loadData()" class="mt-2 text-blue-500 underline">重試</button></div>`;
-            }
-        }
-
-        // ✅ 即時更新渲染函數 (不重新請求伺服器)
-        function updateItemLocally(id, lot, expiry, newQty, newMinQty, isStocktake) {
-            const itemIndex = allItems.findIndex(i => i.id == id && i.lot == lot && i.expiry == expiry);
-            if (itemIndex !== -1) {
-                allItems[itemIndex].qty = newQty;
-                if (isStocktake && newMinQty !== undefined) {
-                    allItems[itemIndex].minQty = newMinQty;
+                if (error.message.includes('未授權')) {
+                    logout();
                 }
-                if (isStocktake) {
-                    allItems[itemIndex].lastStocktake = new Date().toISOString();
-                }
-                renderInventory(); // 重新渲染列表
-                renderLogs([]); // 可選：更新日誌需重新載入或本地推入
             }
         }
 
@@ -357,9 +347,10 @@
                 return;
             }
 
+            // 排序：ID -> 效期
             filtered.sort((a, b) => {
                 if (a.id !== b.id) return a.id.localeCompare(b.id);
-                return new Date(a.expiry) - new Date(b.expiry);
+                return new Date(a.expiry || '2099-12-31') - new Date(b.expiry || '2099-12-31');
             });
 
             filtered.forEach(item => {
@@ -371,7 +362,10 @@
                 if (lastStocktake) {
                     const diffTime = Math.abs(now - lastStocktake);
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                    if (diffDays === 0 || (now.getDate() === lastStocktake.getDate() && now.getMonth() === lastStocktake.getMonth() && now.getFullYear() === lastStocktake.getFullYear())) {
+                    // 檢查是否為今天
+                    if (now.getFullYear() === lastStocktake.getFullYear() && 
+                        now.getMonth() === lastStocktake.getMonth() && 
+                        now.getDate() === lastStocktake.getDate()) {
                         statusClass = 'status-ok';
                         statusText = '今日已盤點';
                     } else if (diffDays <= 7) {
@@ -432,7 +426,7 @@
         function renderLogs(logs) {
             const tbody = document.getElementById('logList');
             tbody.innerHTML = '';
-            logs.slice(-10).reverse().forEach(log => {
+            logs.slice(-20).reverse().forEach(log => {
                 const tr = document.createElement('tr');
                 tr.className = 'border-b hover:bg-gray-50';
                 const item = allItems.find(i => i.id == log.id);
@@ -448,7 +442,7 @@
                     <td class="p-3 font-bold ${typeColor}">${log.type}</td>
                     <td class="p-3 text-sm">${name}</td>
                     <td class="p-3 font-mono">${log.qty > 0 ? '+' : ''}${log.qty}</td>
-                    <td class="p-3 text-xs text-gray-500">${log.user || '-'}</td>
+                    <td class="p-3 text-xs text-gray-500">${log.user}</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -493,15 +487,15 @@
             if (!qty || qty <= 0) return showAlert('錯誤', '數量必須大於 0');
 
             const payload = {
+                action: 'write',
+                token: authToken,
                 type: type === 'in' ? '入庫' : (type === 'out' ? '領用' : '盤點'),
                 id: id,
                 lot: lot,
                 expiry: expiry,
                 qty: qty,
-                user: currentUser.name, // 前端帶入姓名供日誌使用 (後端會驗證 Token)
                 note: note,
-                name: name,
-                token: authToken
+                name: name
             };
 
             if (type === 'check') {
@@ -510,37 +504,51 @@
 
             closeModal('action-modal');
             
-            // ✅ 樂觀更新 (Optimistic UI)：先更新畫面，再送請求
-            // 注意：這裡只是預覽，若後端失敗需還原，但為了簡化通常直接更新
-            if (type === 'check') {
-                updateItemLocally(id, lot, expiry, qty, minQty, true);
-            } else if (type === 'in') {
-                const currentItem = allItems.find(i => i.id == id && i.lot == lot && i.expiry == expiry);
-                if(currentItem) updateItemLocally(id, lot, expiry, currentItem.qty + qty, undefined, false);
-            } else if (type === 'out') {
-                const currentItem = allItems.find(i => i.id == id && i.lot == lot && i.expiry == expiry);
-                if(currentItem) updateItemLocally(id, lot, expiry, currentItem.qty - qty, undefined, false);
-            }
+            // 樂觀更新 UI (先更新畫面，再送後端)
+            updateLocalData(payload);
 
             try {
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
                 
-                if (!result.success) {
-                    showAlert('操作失敗', result.error);
-                    loadData(); // 失敗則重新載入以還原正確數據
+                if (result.success) {
+                    // 後端回傳最新資料，同步狀態
+                    allItems = result.items;
+                    renderInventory();
+                    renderLogs(result.logs);
+                    showAlert('成功', '操作已完成');
                 } else {
-                    // 成功則重新載入日誌 (因為日誌沒做樂觀更新)
-                    // 可選：只重新載入日誌部分
-                    loadData(); 
+                    // 失敗則重新載入以還原正確數據
+                    loadData();
+                    showAlert('錯誤', result.error || '操作失敗');
                 }
             } catch (error) {
-                showAlert('錯誤', '送出失敗：' + error.message);
                 loadData();
+                showAlert('錯誤', '網路錯誤：' + error.message);
+            }
+        }
+
+        // 即時更新本地數據 (Optimistic UI)
+        function updateLocalData(payload) {
+            const itemIndex = allItems.findIndex(i => 
+                i.id === payload.id && i.lot === payload.lot && i.expiry === payload.expiry
+            );
+
+            if (itemIndex !== -1) {
+                const item = allItems[itemIndex];
+                if (payload.type === '入庫') {
+                    item.qty += payload.qty;
+                } else if (payload.type === '領用') {
+                    item.qty -= payload.qty;
+                } else if (payload.type === '盤點') {
+                    item.qty = payload.qty;
+                    item.minQty = payload.minQty || item.minQty;
+                    item.lastStocktake = new Date().toISOString();
+                }
+                renderInventory();
             }
         }
 
@@ -558,6 +566,8 @@
             if (!id || !name || !qty) return showAlert('錯誤', 'ID、名稱、數量為必填');
 
             const payload = {
+                action: 'write',
+                token: authToken,
                 type: '新入庫建檔',
                 id: id,
                 name: name,
@@ -567,40 +577,63 @@
                 vendor: vendor,
                 expiry: expiry,
                 lot: lot,
-                minQty: minQty,
-                token: authToken
+                minQty: minQty
             };
 
             closeModal('new-item-modal');
-            showLoading('inventoryList');
-
+            
             try {
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
-                if(result.success) {
+                
+                if (result.success) {
+                    allItems = result.items;
+                    renderInventory();
+                    renderCategories();
                     showAlert('成功', '新增成功！');
-                    loadData();
                 } else {
                     showAlert('錯誤', result.error);
                 }
             } catch (error) {
-                showAlert('錯誤', '新增失敗：' + error.message);
+                showAlert('錯誤', '網路錯誤：' + error.message);
             }
         }
 
-        async function sendMonthlyReport() {
-            if(!confirm('確定要立即發送月報到 ' + (settings.reportEmail || '設定中的信箱') + ' 嗎？')) return;
-            showAlert('已送出請求', '系統正背景處理月報，請稍後檢查信箱。');
+        function saveSettings() {
+            const email = document.getElementById('settingEmail').value;
+            if(!email) return showAlert('錯誤', '請輸入 Email');
+            
+            const payload = {
+                action: 'updateSettings',
+                token: authToken,
+                reportEnabled: true,
+                reportEmail: email
+            };
+
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) showAlert('成功', '設定已儲存');
+                else showAlert('錯誤', data.error);
+            })
+            .catch(err => showAlert('錯誤', err.message));
+        }
+
+        function sendMonthlyReport() {
+            showAlert('提示', '月報功能需後端設定定時觸發。\n您可以手動前往 Google Apps Script 執行 sendConsumptionReport 函數。');
         }
 
         function startScan(mode) {
             const readerDiv = document.getElementById('reader');
             readerDiv.innerHTML = '';
             html5QrCode = new Html5Qrcode("reader");
+            
             const config = { fps: 10, qrbox: { width: 250, height: 250 } };
             
             html5QrCode.start({ facingMode: "environment" }, config, (decodedText) => {
