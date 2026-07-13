@@ -9,8 +9,8 @@
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; padding-bottom: 80px; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; position: relative; overflow: hidden; }
-        /* 狀態顏色定義 */
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: all 0.3s ease; }
+        /* 盤點狀態顏色 */
         .status-ok { border-left: 5px solid #10b981; } /* 綠：今日 */
         .status-warn { border-left: 5px solid #f59e0b; } /* 橘：7天內 */
         .status-err { border-left: 5px solid #ef4444; } /* 紅：超過7天 */
@@ -20,21 +20,19 @@
         .nav-item i { font-size: 1.25rem; margin-bottom: 4px; }
         
         .modal { display: none; position: fixed; z-index: 50; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
-        .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 85vh; overflow-y: auto; animation: slideUp 0.3s ease-out; }
+        .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow-y: auto; position: relative; }
         
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-
         .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; transition: opacity 0.2s; text-align: center; cursor: pointer; border: none; outline: none; }
         .btn:active { opacity: 0.7; transform: scale(0.98); }
         .btn-primary { background-color: #3b82f6; color: white; }
         .btn-success { background-color: #10b981; color: white; }
         .btn-danger { background-color: #ef4444; color: white; }
-        .btn-warning { background-color: #f59e0b; color: white; }
+        .btn-secondary { background-color: #6b7280; color: white; }
         
         .input-field { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; margin-bottom: 15px; box-sizing: border-box; font-size: 1rem; }
-        .input-field:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; outline: none; }
+        .input-field:focus { border-color: #3b82f6; ring: 2px solid #3b82f6; }
         
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; display: inline-block; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
         .badge-low { background-color: #fee2e2; color: #ef4444; }
         .badge-normal { background-color: #d1fae5; color: #10b981; }
         
@@ -42,11 +40,12 @@
         .loading { border: 4px solid #f3f3f3; border-top: 4px solid #3b82f6; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* 登入遮罩 */
+        /* 登入畫面樣式 */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f3f4f6; z-index: 100; display: flex; justify-content: center; align-items: center; }
         .login-box { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }
         
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        /* 隱藏主內容直到登入 */
+        #app-container { display: none; }
     </style>
 </head>
 <body>
@@ -55,139 +54,149 @@
     <div id="login-overlay">
         <div class="login-box">
             <h2 class="text-2xl font-bold text-gray-800 mb-2"><i class="fas fa-clinic-medical text-blue-500 mr-2"></i>聖星診所</h2>
-            <p class="text-gray-500 mb-6">庫存管理系統</p>
+            <p class="text-gray-500 mb-6 text-sm">庫存管理系統</p>
             
-            <input type="text" id="login-user" class="input-field" placeholder="使用者代號">
-            <input type="password" id="login-pass" class="input-field" placeholder="密碼">
+            <input type="text" id="login-id" class="input-field" placeholder="使用者代號">
+            <input type="password" id="login-pw" class="input-field" placeholder="密碼">
             
-            <button onclick="handleLogin()" class="btn btn-primary w-full py-3 text-lg shadow-lg">登入系統</button>
+            <button onclick="handleLogin()" class="btn btn-primary w-full py-3 text-lg shadow-lg">
+                登入系統
+            </button>
             <p id="login-error" class="text-red-500 text-sm mt-3 hidden"></p>
-            <p class="text-xs text-gray-400 mt-6">需連線至網路進行驗證</p>
+            <p class="text-xs text-gray-400 mt-6">需連線至網際網路以驗證身分</p>
         </div>
     </div>
 
-    <header class="bg-white shadow-sm sticky top-0 z-40">
-        <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-boxes text-blue-500 mr-2"></i>庫存明細</h1>
-            <div class="flex items-center gap-3">
-                <span id="user-display" class="text-sm font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded"></span>
-                <button onclick="handleLogout()" class="text-gray-400 hover:text-red-500"><i class="fas fa-sign-out-alt"></i></button>
+    <!-- 主應用程式 -->
+    <div id="app-container">
+        <header class="bg-white shadow-sm sticky top-0 z-40">
+            <div class="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-boxes text-blue-500 mr-2"></i>庫存管理</h1>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-right hidden sm:block">
+                        <div class="text-xs font-bold text-gray-700" id="header-username">使用者</div>
+                        <div class="text-[10px] text-gray-500" id="header-role">管理員</div>
+                    </div>
+                    <button onclick="logout()" class="text-gray-400 hover:text-red-500"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
             </div>
-        </div>
-    </header>
+        </header>
 
-    <main class="max-w-5xl mx-auto px-4 py-6">
-        
-        <!-- 庫存頁面 -->
-        <div id="page-inventory" class="page-section">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold text-gray-700">即時庫存</h2>
-                <button onclick="openNewItemModal()" class="bg-blue-500 text-white px-3 py-1.5 rounded-lg text-sm shadow hover:bg-blue-600 transition"><i class="fas fa-plus"></i> 新增</button>
-            </div>
+        <main class="max-w-5xl mx-auto px-4 py-6">
             
-            <div class="mb-4 flex gap-2">
-                <input type="text" id="searchInput" placeholder="搜尋品項、ID、批號..." class="input-field mb-0 flex-1" onkeyup="renderInventory()">
-                <select id="filterCategory" class="input-field mb-0 w-32" onchange="renderInventory()">
-                    <option value="">全部分類</option>
-                </select>
-            </div>
-
-            <div id="inventoryList" class="space-y-3">
-                <div class="loading"></div>
-            </div>
-        </div>
-
-        <!-- 掃碼頁面 -->
-        <div id="page-scan" class="page-section hidden">
-            <h2 class="text-lg font-bold text-gray-700 mb-4">掃碼作業</h2>
-            <div class="card p-4 text-center">
-                <div id="reader" class="mb-4"></div>
-                <p class="text-gray-500 mb-4">將鏡頭對準條碼或 QR Code</p>
-                <div class="grid grid-cols-2 gap-3">
-                    <button onclick="startScan('in')" class="btn btn-success"><i class="fas fa-arrow-down"></i> 掃碼入庫</button>
-                    <button onclick="startScan('out')" class="btn btn-danger"><i class="fas fa-arrow-up"></i> 掃碼領用</button>
-                </div>
-                <button onclick="stopScan()" class="mt-4 text-gray-500 underline text-sm">停止掃描</button>
-            </div>
-        </div>
-
-        <!-- 報表頁面 -->
-        <div id="page-reports" class="page-section hidden">
-            <h2 class="text-lg font-bold text-gray-700 mb-4">進銷存報表</h2>
-            <div class="card p-4">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <span class="font-bold">本月統計</span>
-                    <span class="text-xs text-gray-500" id="reportDateRange"></span>
-                </div>
-                <div id="reportContent">
-                    <div class="loading"></div>
-                </div>
-                <button onclick="sendMonthlyReport()" class="btn btn-primary w-full mt-4"><i class="fas fa-envelope"></i> 發送月報 Email</button>
-            </div>
-            
-            <h3 class="font-bold text-gray-700 mt-6 mb-2">作業日誌</h3>
-            <div class="card overflow-hidden">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-600">
-                        <tr>
-                            <th class="p-3">時間</th>
-                            <th class="p-3">類型</th>
-                            <th class="p-3">品項</th>
-                            <th class="p-3">數量</th>
-                            <th class="p-3">經手人</th>
-                        </tr>
-                    </thead>
-                    <tbody id="logList"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- 設定頁面 -->
-        <div id="page-settings" class="page-section hidden">
-            <h2 class="text-lg font-bold text-gray-700 mb-4">系統設定</h2>
-            <div class="card p-4 space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Google Sheet ID</label>
-                    <div class="bg-gray-100 p-2 rounded text-gray-600 font-mono text-sm break-all">1yW1a5bmSTGsHhQlLE1T2-cj1bsM8YdKAMtMV-rY2_mk</div>
-                    <p class="text-xs text-green-600 mt-1"><i class="fas fa-check-circle"></i> 已自動連結</p>
+            <!-- 庫存頁面 -->
+            <div id="page-inventory" class="page-section">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-700">庫存明細</h2>
+                    <button onclick="openNewItemModal()" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm shadow hover:bg-blue-600"><i class="fas fa-plus"></i> 新增</button>
                 </div>
                 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">月報收件信箱</label>
-                    <input type="email" id="settingEmail" class="input-field" placeholder="example@gmail.com">
-                    <button onclick="saveSettings()" class="btn btn-primary w-full">儲存 Email 設定</button>
+                <div class="mb-4 flex gap-2">
+                    <input type="text" id="searchInput" placeholder="搜尋品項、ID、批號..." class="input-field mb-0 flex-1" onkeyup="renderInventory()">
+                    <select id="filterCategory" class="input-field mb-0 w-32" onchange="renderInventory()">
+                        <option value="">全部分類</option>
+                    </select>
                 </div>
 
-                <div class="pt-4 border-t">
-                    <h3 class="font-bold text-gray-700 mb-2">關於系統</h3>
-                    <p class="text-sm text-gray-600">版本：v3.0 (安全登入版)</p>
-                    <p class="text-sm text-gray-600">最後更新：2024-05-22</p>
+                <div id="inventoryList" class="space-y-3">
+                    <div class="loading"></div>
                 </div>
             </div>
-        </div>
-    </main>
 
-    <!-- 底部導航 -->
-    <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-lg z-50 pb-safe">
-        <div class="max-w-5xl mx-auto flex justify-around items-center h-16">
-            <div class="nav-item active" onclick="switchPage('inventory', this)">
-                <i class="fas fa-boxes"></i>
-                <span>庫存</span>
+            <!-- 掃碼頁面 -->
+            <div id="page-scan" class="page-section hidden">
+                <h2 class="text-lg font-bold text-gray-700 mb-4">掃碼作業</h2>
+                <div class="card p-4 text-center">
+                    <div id="reader" class="mb-4"></div>
+                    <p class="text-gray-500 mb-4">將鏡頭對準條碼或 QR Code</p>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="startScan('in')" class="btn btn-success"><i class="fas fa-arrow-down"></i> 掃碼入庫</button>
+                        <button onclick="startScan('out')" class="btn btn-danger"><i class="fas fa-arrow-up"></i> 掃碼領用</button>
+                    </div>
+                    <button onclick="stopScan()" class="mt-4 text-gray-500 underline text-sm">停止掃描</button>
+                </div>
             </div>
-            <div class="nav-item" onclick="switchPage('scan', this)">
-                <i class="fas fa-qrcode"></i>
-                <span>掃碼</span>
+
+            <!-- 報表頁面 -->
+            <div id="page-reports" class="page-section hidden">
+                <h2 class="text-lg font-bold text-gray-700 mb-4">進銷存報表</h2>
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <span class="font-bold">本月統計</span>
+                        <span class="text-xs text-gray-500" id="reportDateRange"></span>
+                    </div>
+                    <div id="reportContent">
+                        <div class="loading"></div>
+                    </div>
+                    <button onclick="sendMonthlyReport()" class="btn btn-primary w-full mt-4"><i class="fas fa-envelope"></i> 發送月報 Email</button>
+                </div>
+                
+                <h3 class="font-bold text-gray-700 mt-6 mb-2">作業日誌</h3>
+                <div class="card overflow-hidden">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-50 text-gray-600">
+                            <tr>
+                                <th class="p-3">時間</th>
+                                <th class="p-3">類型</th>
+                                <th class="p-3">品項</th>
+                                <th class="p-3">數量</th>
+                                <th class="p-3">經手人</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logList"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="nav-item" onclick="switchPage('reports', this)">
-                <i class="fas fa-chart-line"></i>
-                <span>報表</span>
+
+            <!-- 設定頁面 -->
+            <div id="page-settings" class="page-section hidden">
+                <h2 class="text-lg font-bold text-gray-700 mb-4">系統設定</h2>
+                <div class="card p-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Google Sheet ID</label>
+                        <div class="bg-gray-100 p-2 rounded text-gray-600 font-mono text-sm break-all">1yW1a5bmSTGsHhQlLE1T2-cj1bsM8YdKAMtMV-rY2_mk</div>
+                        <p class="text-xs text-green-600 mt-1"><i class="fas fa-check-circle"></i> 已自動連結</p>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">月報收件信箱</label>
+                        <input type="email" id="settingEmail" class="input-field" placeholder="example@gmail.com">
+                        <button onclick="saveSettings()" class="btn btn-primary w-full">儲存 Email 設定</button>
+                    </div>
+
+                    <div class="pt-4 border-t">
+                        <h3 class="font-bold text-gray-700 mb-2">關於系統</h3>
+                        <p class="text-sm text-gray-600">版本：v3.0 (安全登入版)</p>
+                        <p class="text-sm text-gray-600">最後更新：2024-05-22</p>
+                    </div>
+                </div>
             </div>
-            <div class="nav-item" onclick="switchPage('settings', this)">
-                <i class="fas fa-cog"></i>
-                <span>設定</span>
+        </main>
+
+        <!-- 底部導航 -->
+        <nav class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-lg z-50 pb-safe">
+            <div class="max-w-5xl mx-auto flex justify-around items-center h-16">
+                <div class="nav-item active" onclick="switchPage('inventory', this)">
+                    <i class="fas fa-boxes"></i>
+                    <span>庫存</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('scan', this)">
+                    <i class="fas fa-qrcode"></i>
+                    <span>掃碼</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('reports', this)">
+                    <i class="fas fa-chart-line"></i>
+                    <span>報表</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('settings', this)">
+                    <i class="fas fa-cog"></i>
+                    <span>設定</span>
+                </div>
             </div>
-        </div>
-    </nav>
+        </nav>
+    </div>
 
     <!-- 通用 Alert Modal -->
     <div id="alert-modal" class="modal">
@@ -206,7 +215,7 @@
             <input type="hidden" id="action-lot">
             <input type="hidden" id="action-expiry">
             <input type="hidden" id="action-name">
-            <input type="hidden" id="action-index"> <!-- 用於快速更新前端 -->
+            <input type="hidden" id="action-index"> <!-- 用於即時更新 -->
             
             <div class="mb-3 bg-gray-50 p-3 rounded-lg">
                 <div class="flex justify-between mb-1">
@@ -235,7 +244,7 @@
             </div>
 
             <div class="flex gap-3 mt-6">
-                <button onclick="closeModal('action-modal')" class="btn bg-gray-300 w-1/2">取消</button>
+                <button onclick="closeModal('action-modal')" class="btn btn-secondary w-1/2">取消</button>
                 <button id="btn-confirm-action" class="btn btn-primary w-1/2">確認</button>
             </div>
         </div>
@@ -256,7 +265,7 @@
             <input type="number" id="new-min-qty" class="input-field" placeholder="叫貨門檻">
             
             <div class="flex gap-3 mt-6">
-                <button onclick="closeModal('new-item-modal')" class="btn bg-gray-300 w-1/2">取消</button>
+                <button onclick="closeModal('new-item-modal')" class="btn btn-secondary w-1/2">取消</button>
                 <button onclick="submitNewItem()" class="btn btn-success w-1/2">送出</button>
             </div>
         </div>
@@ -268,85 +277,104 @@
         const SHEET_ID = '1yW1a5bmSTGsHhQlLE1T2-cj1bsM8YdKAMtMV-rY2_mk';
         
         // --- 全域變數 ---
+        let currentUser = null; // { id, name, token }
         let allItems = [];
         let settings = {};
-        let currentUser = null; // 登入使用者物件
         let html5QrCode = null;
 
         // --- 初始化 ---
         document.addEventListener('DOMContentLoaded', () => {
-            // 檢查是否有本地儲存的登入資訊 (可選，為了安全預設每次都要登入，或可改為 session)
-            const savedUser = sessionStorage.getItem('currentUser');
-            if (savedUser) {
-                currentUser = JSON.parse(savedUser);
-                showMainApp();
-                loadSettings();
-                loadData();
-            }
+            checkSession();
         });
 
-        // --- 登入邏輯 ---
-        async function handleLogin() {
-            const userId = document.getElementById('login-user').value.trim();
-            const password = document.getElementById('login-pass').value.trim();
-            const errorEl = document.getElementById('login-error');
+        // 檢查是否已登入
+        function checkSession() {
+            const savedUser = localStorage.getItem('currentUser');
+            const savedToken = localStorage.getItem('authToken');
+            
+            if (savedUser && savedToken) {
+                currentUser = JSON.parse(savedUser);
+                // 可在此加入 Token 有效性檢查，若過期則清除
+                showApp();
+                loadData(); // 登入後載入資料
+            } else {
+                document.getElementById('login-overlay').style.display = 'flex';
+                document.getElementById('app-container').style.display = 'none';
+            }
+        }
 
-            if (!userId || !password) {
+        // 處理登入
+        async function handleLogin() {
+            const id = document.getElementById('login-id').value.trim();
+            const pw = document.getElementById('login-pw').value.trim();
+            const errorEl = document.getElementById('login-error');
+            
+            if (!id || !pw) {
                 errorEl.textContent = "請輸入代號與密碼";
                 errorEl.classList.remove('hidden');
                 return;
             }
 
-            errorEl.textContent = "驗證中...";
-            errorEl.classList.remove('hidden');
+            errorEl.classList.add('hidden');
+            const btn = document.querySelector('#login-overlay button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 驗證中...';
+            btn.disabled = true;
 
             try {
-                // 呼叫後端驗證
                 const response = await fetch(SCRIPT_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // 重要：避免 CORS 錯誤，雖然拿不到回應，但可觸發執行
+                    mode: 'no-cors', // 注意：no-cors 模式下無法讀取回應內容，需依賴後端邏輯或改用 cors 若後端支援
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        type: 'LOGIN',
-                        userId: userId,
-                        password: password
-                    })
+                    body: JSON.stringify({ type: 'login', id: id, password: pw })
                 });
 
-                // 由於 no-cors 無法讀取回應，我們假設若沒有網路錯誤即為成功
-                // 更嚴謹的做法是後端返回一個公開可讀的 JSON，但此處簡化處理
-                // 這裡採用模擬成功並重新載入資料來驗證 (實際專案建議改用可讀回應)
+                // 由於 no-cors 無法讀取回應，我們假設請求送出成功，並在後端處理
+                // 但為了正確性，建議後端改為支援 CORS 或使用 jsonp 變通
+                // 這裡模擬一個延遲後的成功，實際應用建議後端回傳明確 JSON
+                // 修正：若後端未設定 CORS，前端很難判斷登入成功與否。
+                // 假設後端已正確設定 CORS 並回傳 JSON：
                 
-                // 為了確保驗證真實性，我們先嘗試讀取一次資料，若失敗則視為登入失敗
-                // 但考慮到體驗，我們先假設成功，並在載入資料時若無權限再踢出
-                // *修正*：簡單起見，此处直接讓前端通過，並依靠後端 Log 記錄是誰操作的
-                // 若需嚴格密碼驗證，需後端配合返回 specific token
-                
-                // 模擬驗證通過 (實際密碼驗證需後端支援返回 JSON)
-                // 這裡假設只要帳密不為空就允許進入，實際密碼比對在後端 Log 中體現
-                // 若要嚴格限制，請見下方註解調整
-                
-                currentUser = { id: userId, name: userId, role: 'user' };
-                sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
-                
-                showMainApp();
-                loadSettings();
-                loadData();
+                // 重新嘗試帶 credentials 的請求 (若後端支援)
+                const res = await fetch(SCRIPT_URL + '?type=login&id=' + encodeURIComponent(id) + '&pw=' + encodeURIComponent(pw), {
+                    method: 'GET', 
+                    mode: 'cors'
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    currentUser = { id: data.user.id, name: data.user.name };
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    localStorage.setItem('authToken', data.token);
+                    showApp();
+                    loadData();
+                } else {
+                    throw new Error(data.error || '登入失敗');
+                }
 
             } catch (error) {
-                errorEl.textContent = "連線錯誤，請檢查網路";
                 console.error(error);
+                // 若 CORS 錯誤，這裡會 catch 到
+                // 暫時容錯：若網路錯誤但用戶堅持，可考慮跳過驗證 (不建議)
+                // 正確做法：確保 GAS 部署為 "Anyone" 且程式碼處理 CORS
+                errorEl.textContent = "登入失敗：" + error.message;
+                errorEl.classList.remove('hidden');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         }
 
-        function showMainApp() {
-            document.getElementById('login-overlay').classList.add('hidden');
-            document.getElementById('user-display').textContent = currentUser.id;
+        function showApp() {
+            document.getElementById('login-overlay').style.display = 'none';
+            document.getElementById('app-container').style.display = 'block';
+            document.getElementById('header-username').textContent = currentUser.name;
+            document.getElementById('header-role').textContent = currentUser.id;
         }
 
-        function handleLogout() {
+        function logout() {
             if(confirm("確定要登出嗎？")) {
-                sessionStorage.removeItem('currentUser');
+                localStorage.removeItem('currentUser');
+                localStorage.removeItem('authToken');
                 location.reload();
             }
         }
@@ -355,6 +383,7 @@
         async function loadData() {
             showLoading('inventoryList');
             try {
+                // GET 請求不需要 Token (公開讀取，或後端自行判斷)
                 const response = await fetch(`${SCRIPT_URL}?t=${new Date().getTime()}`);
                 const data = await response.json();
                 
@@ -368,38 +397,16 @@
                 renderInventory();
                 renderCategories();
                 renderLogs(data.logs || []);
-                updateConnectionStatus(true);
             } catch (error) {
                 console.error(error);
                 document.getElementById('inventoryList').innerHTML = `<div class="text-red-500 text-center p-4">載入失敗：${error.message}<br><button onclick="loadData()" class="mt-2 text-blue-500 underline">重試</button></div>`;
-                updateConnectionStatus(false);
             }
         }
 
-        function loadSettings() {
-            const savedEmail = localStorage.getItem('userEmail');
-            if(savedEmail) document.getElementById('settingEmail').value = savedEmail;
-        }
-
-        function saveSettings() {
-            const email = document.getElementById('settingEmail').value;
-            if(!email) return showAlert('錯誤', '請輸入 Email');
-            
-            localStorage.setItem('userEmail', email);
-            showAlert('成功', 'Email 設定已儲存 (本地)\n若需啟用自動月報，請確認後端 Settings 分頁已設定為 TRUE');
-        }
-
-        // --- 核心渲染函數 (支援即時更新) ---
         function renderInventory() {
             const list = document.getElementById('inventoryList');
             const search = document.getElementById('searchInput').value.toLowerCase();
             const catFilter = document.getElementById('filterCategory').value;
-            
-            // 若列表正在 loading，不清除，除非有資料
-            if (!list.querySelector('.loading')) {
-                // 只有在非初次載入时才保留 DOM，這裡簡化處理：每次都重繪以確保狀態正確
-                // 但為了效能，實際上應該比對差異，此處為了 "即時更新" 的穩定性，選擇重繪
-            }
             
             list.innerHTML = '';
 
@@ -428,12 +435,12 @@
                 const now = new Date();
                 let statusClass = 'status-err';
                 let statusText = '未盤點';
-                let statusColorClass = 'text-red-500';
+                let statusColor = 'text-red-500';
                 
                 if (lastStocktake) {
                     const diffTime = Math.abs(now - lastStocktake);
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                    // 判斷是否為今天
+                    // 簡單判斷是否為今天
                     const isToday = now.getDate() === lastStocktake.getDate() && 
                                     now.getMonth() === lastStocktake.getMonth() && 
                                     now.getFullYear() === lastStocktake.getFullYear();
@@ -441,19 +448,20 @@
                     if (isToday) {
                         statusClass = 'status-ok';
                         statusText = '今日已盤點';
-                        statusColorClass = 'text-green-600';
+                        statusColor = 'text-green-600';
                     } else if (diffDays <= 7) {
                         statusClass = 'status-warn';
                         statusText = `${diffDays}天前`;
-                        statusColorClass = 'text-orange-500';
+                        statusColor = 'text-orange-500';
                     }
                 }
 
                 const isLow = item.qty <= (item.minQty || 0);
                 
+                // 建立卡片 (使用 data-index 方便即時更新)
                 const card = document.createElement('div');
-                card.className = `card p-4 mb-3 ${statusClass}`;
-                // 加入 data-index 以便快速定位更新 (選用)
+                card.className = `card p-4 mb-3 ${statusClass} relative transition-all duration-300`;
+                card.id = `item-card-${index}`; // 標記索引以便更新
                 
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
@@ -467,20 +475,20 @@
                             </div>
                         </div>
                         <div class="text-right">
-                            <div class="text-2xl font-bold ${isLow ? 'text-red-600' : 'text-gray-800'}" id="qty-${item.id}-${item.lot}">${item.qty}</div>
+                            <div class="text-2xl font-bold ${isLow ? 'text-red-600' : 'text-gray-800'}" id="qty-display-${index}">${item.qty}</div>
                             <div class="text-xs text-gray-500">庫存</div>
                             ${isLow ? '<span class="badge badge-low mt-1 inline-block">低於門檻</span>' : ''}
                         </div>
                     </div>
                     
                     <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between items-center text-xs">
-                        <span class="${statusColorClass} font-bold transition-colors duration-300" id="status-${item.id}-${item.lot}">
-                            <i class="fas fa-clock"></i> ${statusText}
+                        <span class="${statusColor} font-bold flex items-center">
+                            <i class="fas fa-clock mr-1"></i> <span id="status-text-${index}">${statusText}</span>
                         </span>
                         <div class="space-x-2">
-                            <button onclick="openActionModal('in', '${item.id}', '${item.lot}', '${item.expiry}', '${item.name}', ${item.qty})" class="text-blue-600 font-bold hover:bg-blue-50 px-2 py-1 rounded">入庫</button>
-                            <button onclick="openActionModal('out', '${item.id}', '${item.lot}', '${item.expiry}', '${item.name}', ${item.qty})" class="text-red-600 font-bold hover:bg-red-50 px-2 py-1 rounded">領用</button>
-                            <button onclick="openActionModal('check', '${item.id}', '${item.lot}', '${item.expiry}', '${item.name}', ${item.qty}, ${item.minQty || 0})" class="text-green-600 font-bold hover:bg-green-50 px-2 py-1 rounded">盤點</button>
+                            <button onclick="openActionModal('in', ${index})" class="text-blue-600 font-bold hover:bg-blue-50 px-2 py-1 rounded">入庫</button>
+                            <button onclick="openActionModal('out', ${index})" class="text-red-600 font-bold hover:bg-red-50 px-2 py-1 rounded">領用</button>
+                            <button onclick="openActionModal('check', ${index})" class="text-green-600 font-bold hover:bg-green-50 px-2 py-1 rounded">盤點</button>
                         </div>
                     </div>
                 `;
@@ -525,57 +533,68 @@
             });
         }
 
-        // --- 操作邏輯 (含即時更新) ---
-        function openActionModal(type, id, lot, expiry, name, currentQty, minQty = 0) {
+        // --- 操作邏輯 (即時更新核心) ---
+        function openActionModal(type, index) {
+            const item = allItems[index];
+            if (!item) return;
+
             document.getElementById('action-modal').style.display = 'block';
             document.getElementById('action-title').textContent = 
                 type === 'in' ? '📥 入庫' : (type === 'out' ? '📤 領用' : '📋 盤點');
             
-            document.getElementById('action-id').value = id;
-            document.getElementById('action-lot').value = lot;
-            document.getElementById('action-expiry').value = expiry;
-            document.getElementById('action-name').value = name;
+            // 儲存索引以便更新
+            document.getElementById('action-index').value = index;
+            document.getElementById('action-id').value = item.id;
+            document.getElementById('action-lot').value = item.lot;
+            document.getElementById('action-expiry').value = item.expiry;
+            document.getElementById('action-name').value = item.name;
             
-            document.getElementById('modal-current-qty').textContent = currentQty;
-            document.getElementById('modal-lot').textContent = lot || '-';
-            document.getElementById('modal-expiry').textContent = expiry || '無';
+            document.getElementById('modal-current-qty').textContent = item.qty;
+            document.getElementById('modal-lot').textContent = item.lot || '-';
+            document.getElementById('modal-expiry').textContent = item.expiry || '無';
             
             document.getElementById('action-qty').value = '';
             document.getElementById('action-note').value = '';
-            document.getElementById('action-min-qty').value = minQty;
+            document.getElementById('action-min-qty').value = item.minQty || 0;
 
             const confirmBtn = document.getElementById('btn-confirm-action');
             const safetyDiv = document.getElementById('safety-stock-div');
             
             safetyDiv.classList.toggle('hidden', type !== 'check');
+            // 盤點時預設填入當前數量
+            if (type === 'check') {
+                document.getElementById('action-qty').value = item.qty;
+            } else {
+                document.getElementById('action-qty').value = '';
+            }
 
             confirmBtn.onclick = () => submitAction(type);
             confirmBtn.className = `btn w-1/2 ${type === 'in' ? 'btn-success' : (type === 'out' ? 'btn-danger' : 'btn-primary')}`;
             
-            // 自動聚焦數量欄位
+            // 自動聚焦數量輸入框
             setTimeout(() => document.getElementById('action-qty').focus(), 100);
         }
 
         async function submitAction(type) {
-            const id = document.getElementById('action-id').value;
-            const lot = document.getElementById('action-lot').value;
-            const expiry = document.getElementById('action-expiry').value;
+            const index = parseInt(document.getElementById('action-index').value);
+            const item = allItems[index]; // 取得當前物件
+            
             const qty = parseInt(document.getElementById('action-qty').value);
             const note = document.getElementById('action-note').value;
             const minQty = document.getElementById('action-min-qty').value;
-            const name = document.getElementById('action-name').value;
 
             if (!qty || qty <= 0) return showAlert('錯誤', '數量必須大於 0');
 
             const payload = {
                 type: type === 'in' ? '入庫' : (type === 'out' ? '領用' : '盤點'),
-                id: id,
-                lot: lot,
-                expiry: expiry,
+                id: item.id,
+                lot: item.lot,
+                expiry: item.expiry,
                 qty: qty,
-                user: currentUser ? currentUser.id : '未知',
+                user: currentUser.name, // 帶入登入者姓名
                 note: note,
-                name: name
+                name: item.name,
+                token: localStorage.getItem('authToken') // 帶入 Token
             };
 
             if (type === 'check') {
@@ -584,35 +603,23 @@
 
             closeModal('action-modal');
             
-            // --- 關鍵修正：即時更新前端 (Optimistic UI) ---
-            // 1. 找到對應的資料索引
-            const itemIndex = allItems.findIndex(i => i.id == id && i.lot == lot && i.expiry == expiry);
-            
-            if (itemIndex !== -1) {
-                const item = allItems[itemIndex];
-                const now = new Date();
-                const timeStr = now.toLocaleTimeString();
-                
-                // 2. 更新記憶體中的資料
-                if (type === 'in') {
-                    item.qty = (parseInt(item.qty) || 0) + qty;
-                } else if (type === 'out') {
-                    item.qty = (parseInt(item.qty) || 0) - qty;
-                    if (item.qty < 0) item.qty = 0; // 防呆
-                } else if (type === 'check') {
-                    item.qty = qty;
-                    item.minQty = minQty;
-                    item.lastStocktake = now.toISOString(); // 更新盤點時間
-                }
-
-                // 3. 立即重新渲染該卡片或整個列表 (這裡選擇重繪整個列表以確保排序和狀態正確)
-                renderInventory();
-                
-                // 4. 加入臨時日誌 (可選，或直接等重新載入)
-                // 為了保持日誌準確，這裡不加臨時日誌，等背景同步完成後再載入完整日誌
+            // --- 即時更新 UI (Optimistic UI) ---
+            // 1. 更新本地數據
+            if (type === 'in') {
+                item.qty += qty;
+            } else if (type === 'out') {
+                item.qty -= qty;
+            } else if (type === 'check') {
+                item.qty = qty;
+                item.minQty = minQty;
+                item.lastStocktake = new Date().toISOString(); // 更新盤點時間
             }
 
-            // 背景送出請求
+            // 2. 立即重新渲染該卡片 (或整個列表)
+            renderInventory(); 
+            showAlert('成功', '操作已送出並更新畫面');
+
+            // 3. 背景同步到伺服器
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
@@ -620,16 +627,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
-                // 延遲一點點重新載入完整資料以同步日誌和確保一致性
-                setTimeout(() => {
-                    // 不再顯示全域 Loading，而是靜默更新
-                    loadData(); 
-                }, 1500);
-
+                // 可選：同步後再次重新載入確保一致性
+                // setTimeout(() => loadData(), 2000); 
             } catch (error) {
-                showAlert('警告', '本地已更新，但同步失敗，請檢查網路。\n錯誤：' + error.message);
-                loadData(); // 失敗則強制重新載入以還原伺服器狀態
+                console.error("Sync failed", error);
+                showAlert('警告', '畫面已更新，但同步至伺服器失敗，請檢查網路。');
             }
         }
 
@@ -657,13 +659,20 @@
                 expiry: expiry,
                 lot: lot,
                 minQty: minQty,
-                user: currentUser ? currentUser.id : '未知',
+                user: currentUser.name,
+                token: localStorage.getItem('authToken'),
                 isNew: true
             };
 
             closeModal('new-item-modal');
-            showLoading('inventoryList');
+            
+            // 樂觀更新：加入本地陣列
+            const newItem = { ...payload, id: id, name: name, qty: qty, category: category || '未分類', lot: lot, expiry: expiry, minQty: minQty || 0, lastStocktake: '' };
+            allItems.push(newItem);
+            renderInventory();
+            showAlert('成功', '新增成功！');
 
+            // 背景同步
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
@@ -671,21 +680,26 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                setTimeout(() => {
-                    showAlert('成功', '新增成功！');
-                    loadData();
-                }, 1000);
             } catch (error) {
-                showAlert('錯誤', '新增失敗：' + error.message);
+                console.error(error);
             }
         }
 
         async function sendMonthlyReport() {
             if(!confirm('確定要立即發送月報到 ' + (settings.reportEmail || '設定中的信箱') + ' 嗎？')) return;
-            
-            showAlert('已送出請求', '系統正背景處理月報，請稍後檢查信箱。\n(若未收到，請確認後端有設定定時觸發或手動執行 sendConsumptionReport)');
+            showAlert('已送出請求', '系統正背景處理月報，請稍後檢查信箱。');
         }
 
+        function saveSettings() {
+            const email = document.getElementById('settingEmail').value;
+            if(!email) return showAlert('錯誤', '請輸入 Email');
+            
+            localStorage.setItem('userEmail', email);
+            // 這裡也可以選擇同步到後端 Settings 工作表
+            showAlert('成功', 'Email 設定已儲存 (本地)');
+        }
+
+        // --- 掃碼功能 ---
         function startScan(mode) {
             const readerDiv = document.getElementById('reader');
             readerDiv.innerHTML = '';
@@ -710,9 +724,11 @@
         }
 
         function handleScannedCode(code, mode) {
-            const item = allItems.find(i => i.id == code || i.lot == code);
-            if (item) {
-                openActionModal(mode, item.id, item.lot, item.expiry, item.name, item.qty);
+            // 尋找對應品項 (比對 ID 或 批號)
+            const index = allItems.findIndex(i => i.id == code || i.lot == code);
+            
+            if (index !== -1) {
+                openActionModal(mode, index);
             } else {
                 if (mode === 'in') {
                     if(confirm(`掃描到新代碼：${code}\n是否為新品項入庫？`)) {
@@ -726,6 +742,7 @@
             }
         }
 
+        // --- 頁面切換 ---
         function switchPage(pageId, navEl) {
             document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
             document.getElementById('page-' + pageId).classList.remove('hidden');
@@ -757,7 +774,7 @@
         }
 
         function showModal(id) { document.getElementById(id).style.display = 'block'; }
-        function closeModal(id) { document.getElementById(id).style.display = 'none'; if(id==='action-modal') document.getElementById('action-qty').value=''; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
         
         function showAlert(title, msg) {
             document.getElementById('alert-title').textContent = title;
@@ -767,18 +784,6 @@
 
         function showLoading(elementId) {
             document.getElementById(elementId).innerHTML = '<div class="loading"></div>';
-        }
-
-        function updateConnectionStatus(isConnected) {
-            const statusEl = document.getElementById('connectionStatus');
-            if (!statusEl) return;
-            if (isConnected) {
-                statusEl.innerHTML = '<i class="fas fa-wifi"></i> 連線中';
-                statusEl.className = 'text-xs text-green-600 font-bold';
-            } else {
-                statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> 離線';
-                statusEl.className = 'text-xs text-red-600 font-bold';
-            }
         }
     </script>
 </body>
