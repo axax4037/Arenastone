@@ -133,13 +133,29 @@
                 <div id="scanResult" class="mt-4 hidden">
                     <p class="text-green-600 font-semibold">掃描成功：<span id="scannedCode"></span></p>
                 </div>
+                
                 <div id="scanForm" class="hidden mt-4 space-y-3 p-4 bg-blue-50 rounded-lg border">
                     <h3 class="font-bold text-slate-700">填寫表單明細</h3>
-                    <input type="text" id="scanName" placeholder="品項名稱 (若為新品項請輸入)" class="w-full px-3 py-2 border rounded-lg bg-white">
-                    <input type="text" id="scanLot" placeholder="批號 (LOT) 留空自動帶入效期" class="w-full px-3 py-2 border rounded-lg bg-white uppercase">
-                    <input type="date" id="scanExpiry" placeholder="有效日期" class="w-full px-3 py-2 border rounded-lg bg-white">
-                    <input type="number" id="scanQty" placeholder="數量 *" class="w-full px-3 py-2 border rounded-lg bg-white font-bold">
-                    <textarea id="scanNote" placeholder="備註" class="w-full px-3 py-2 border rounded-lg bg-white" rows="2"></textarea>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">品項名稱</label>
+                        <input type="text" id="scanName" placeholder="品項名稱 (若為新品項請輸入)" class="w-full px-3 py-2 border rounded-lg bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空將自動帶入效期數字)</span></label>
+                        <input type="text" id="scanLot" placeholder="例如：260731" class="w-full px-3 py-2 border rounded-lg bg-white uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">有效日期 <span class="text-blue-600 font-normal">(系統將自動轉換為純數字 YYYYMMDD 記錄)</span></label>
+                        <input type="date" id="scanExpiry" class="w-full px-3 py-2 border rounded-lg bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">數量 *</label>
+                        <input type="number" id="scanQty" placeholder="請輸入異動數量" class="w-full px-3 py-2 border rounded-lg bg-white font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">備註</label>
+                        <textarea id="scanNote" placeholder="選填，例如：包裝破損、緊急補貨" class="w-full px-3 py-2 border rounded-lg bg-white" rows="2"></textarea>
+                    </div>
                     <button onclick="submitScan()" id="scanSubmitBtn" class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold">確認提交</button>
                 </div>
             </div>
@@ -150,18 +166,42 @@
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用辦理</h2>
                 <div class="space-y-3">
-                    <input type="text" id="manualId" placeholder="品項 ID / 條碼 *" class="w-full px-3 py-2 border rounded-lg" list="existing-ids-list" oninput="autoFillManual()">
-                    <datalist id="existing-ids-list"></datalist>
-                    <select id="manualType" class="w-full px-3 py-2 border rounded-lg font-bold">
-                        <option value="入庫">入庫</option>
-                        <option value="領用">領用</option>
-                    </select>
-                    <input type="text" id="manualName" placeholder="品項名稱" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="text" id="manualLot" placeholder="批號（LOT）留空自動帶入效期" class="w-full px-3 py-2 border rounded-lg uppercase">
-                    <input type="date" id="manualExpiry" placeholder="效期" class="w-full px-3 py-2 border rounded-lg">
-                    <input type="number" id="manualQty" placeholder="數量 *" class="w-full px-3 py-2 border rounded-lg font-bold">
-                    <input type="number" id="manualPrice" placeholder="單價（選填）" class="w-full px-3 py-2 border rounded-lg">
-                    <textarea id="manualNote" placeholder="備註" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">品項 ID / 條碼 *</label>
+                        <input type="text" id="manualId" placeholder="請輸入或掃描 ID" class="w-full px-3 py-2 border rounded-lg" list="existing-ids-list" oninput="autoFillManual()">
+                        <datalist id="existing-ids-list"></datalist>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">作業類型</label>
+                        <select id="manualType" class="w-full px-3 py-2 border rounded-lg font-bold">
+                            <option value="入庫">入庫</option>
+                            <option value="領用">領用</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">品項名稱</label>
+                        <input type="text" id="manualName" placeholder="輸入 ID 後系統會自動帶出舊有名稱" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空將自動帶入效期數字)</span></label>
+                        <input type="text" id="manualLot" placeholder="選填" class="w-full px-3 py-2 border rounded-lg uppercase">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">有效日期 <span class="text-blue-600 font-normal">(系統將自動轉換為純數字 YYYYMMDD 記錄)</span></label>
+                        <input type="date" id="manualExpiry" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">異動數量 *</label>
+                        <input type="number" id="manualQty" placeholder="請輸入異動數量" class="w-full px-3 py-2 border rounded-lg font-bold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">單價成本</label>
+                        <input type="number" id="manualPrice" placeholder="選填，供財務報表估值計算" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">備註</label>
+                        <textarea id="manualNote" placeholder="選填" class="w-full px-3 py-2 border rounded-lg" rows="2"></textarea>
+                    </div>
                     <button onclick="submitManual()" id="manualSubmitBtn" class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold">提交</button>
                 </div>
             </div>
@@ -262,7 +302,7 @@
         }
 
         // ==========================================
-        // 🌟 核心修正：字串與時間精簡格式化處理工具
+        // 字串與時間精簡格式化處理工具
         // ==========================================
         function formatToYYYYMMDD(dateStr) {
             if (!dateStr || dateStr === '無' || dateStr === '未盤點') return '無';
@@ -272,7 +312,7 @@
                 const yyyy = d.getFullYear();
                 const mm = String(d.getMonth() + 1).padStart(2, '0');
                 const dd = String(d.getDate()).padStart(2, '0');
-                return `${yyyy}${mm}${dd}`; // 💡 輸出純數字 YYYYMMDD
+                return `${yyyy}${mm}${dd}`; // 輸出純數字 YYYYMMDD[cite: 1]
             } catch(e) { return dateStr; }
         }
 
@@ -286,7 +326,7 @@
                 const dd = String(d.getDate()).padStart(2, '0');
                 const hh = String(d.getHours()).padStart(2, '0');
                 const min = String(d.getMinutes()).padStart(2, '0');
-                return `${yyyy}${mm}${dd} ${hh}${min}`; // 💡 輸出純數字 YYYYMMDD HHMM
+                return `${yyyy}${mm}${dd} ${hh}${min}`; // 輸出純數字 YYYYMMDD HHMM[cite: 1]
             } catch(e) { return dateStr; }
         }
 
@@ -300,14 +340,14 @@
                     }
                 } catch(e) {}
             }
-            return lotStr.replace(/['"]/g, '').trim(); // 💡 只顯示純字串
+            return lotStr.replace(/['"]/g, '').trim(); 
         }
 
         async function loadData() {
             document.getElementById('loading-tag').classList.remove('hidden');
             try {
                 const response = await fetch(API_URL);
-                const data = await response.json();
+                const data = await res = await response.json();
                 allItems = data.items || [];
                 updateDashboard();
                 renderItems(allItems);
@@ -346,9 +386,8 @@
         }
 
         // ==========================================
-        // 🌟 核心優化：同名合併卡片 & 內嵌免彈窗直接盤點
+        // 卡片視覺與內嵌免彈窗直接盤點
         // ==========================================
-// 🌟 修正版 renderItems：統一盤點狀態視覺，排除低庫存底色干擾
         function renderItems(items) {
             const container = document.getElementById('itemsList');
             if (items.length === 0) {
@@ -375,7 +414,6 @@
                     return (!latest || b.last_stocktake > latest) ? b.last_stocktake : latest;
                 }, '');
                 
-                // 💡 盤點狀態判定（此處決定卡片左側的邊框顏色，已完全獨立）
                 if (latestStocktake >= today) { statusClass = 'status-today'; statusText = '今日已盤點'; }
                 else if (latestStocktake >= weekAgo) { statusClass = 'status-week'; statusText = '一週內已盤點'; }
                 
@@ -385,7 +423,6 @@
                     .reduce((earliest, b) => (!earliest || b.expiry < earliest) ? b.expiry : earliest, '');
                 
                 html += `
-                    <!-- 💡 修正：卡片底色一律統一為 bg-white，避免低庫存將今日已盤點污染成紅色背景 -->
                     <div class="bg-white rounded-lg shadow ${statusClass} batch-card">
                         <div class="p-4">
                             <div class="flex justify-between items-start mb-2">
@@ -393,14 +430,12 @@
                                     <h3 class="font-bold text-slate-800 text-lg"><i class="fas fa-box text-blue-500 text-sm mr-1"></i> ${name}</h3>
                                     <p class="text-xs text-gray-400 font-mono mt-0.5">分類: ${baseItem.category || '未分類'}</p>
                                 </div>
-                                <!-- 💡 修正：右側狀態標籤根據盤點狀態統一呈現顏色 (今日已盤點固定為綠色標籤) -->
                                 <span class="px-2 py-1 text-xs rounded font-bold ${latestStocktake >= today ? 'bg-green-100 text-green-700' : (latestStocktake >= weekAgo ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}">
                                     ${statusText}
                                 </span>
                             </div>
                             
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm bg-slate-50 p-3 rounded-lg border border-dashed">
-                                <!-- 💡 修正：低庫存改為在庫存數字上呈現紅色字體提醒，不破壞卡片整體底色 -->
                                 <div><div class="text-xs text-gray-500">總庫存</div><div class="font-bold text-lg ${isLowStock ? 'text-red-600 font-extrabold animate-pulse' : 'text-blue-700'}">${totalQty} ${isLowStock ? '(低庫存!)' : ''}</div></div>
                                 <div><div class="text-xs text-gray-500">安全設定量</div><div class="font-semibold text-gray-700">${baseItem.min_qty || '0'}</div></div>
                                 <div><div class="text-xs text-gray-500">最早效期</div><div class="font-semibold text-gray-700">${formatToYYYYMMDD(earliestExpiry)}</div></div>
@@ -408,7 +443,7 @@
                             </div>
                             
                             <div class="mt-2 pt-2 border-t">
-                                <p class="text-xs text-slate-400 font-bold mb-1.5">📦 批次直接管理（修改後點儲存即可）：</p>
+                                <p class="text-xs text-slate-400 font-bold mb-1.5">📦 批次直接管理（免彈窗，修改後點儲存即可）：</p>
                                 <div class="space-y-2">
                                     ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot);
@@ -445,7 +480,7 @@
             container.innerHTML = html;
         }
 
-        // 🌟 新增：卡片內直接儲存盤點，無彈窗全新手機端體驗
+        // 卡片內直接儲存盤點
         async function submitCardStocktake(index) {
             const btn = document.getElementById(`inline-btn-${index}`);
             const inputField = document.getElementById(`inline-qty-${index}`);
@@ -654,11 +689,9 @@
             if (result !== 'Success') throw new Error(result);
         }
 
-// 🌟 修正版：統一使用純數字 YYYYMMDD 進行精準效期預警比對
+        // 🌟 核心修正：採用 YYYYMMDD 純數字邏輯進行財務及效期預警抓取
         function generateReport() {
             const container = document.getElementById('reportContent');
-            
-            // 1. 取得今天的純數字 YYYYMMDD
             const today = new Date();
             const formatNum = (d) => {
                 const y = d.getFullYear();
@@ -668,31 +701,23 @@
             };
             
             const todayNum = formatNum(today);
-            
-            // 2. 取得一個月後的純數字 YYYYMMDD
             const oneMonthLater = new Date();
             oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
             const oneMonthLaterNum = formatNum(oneMonthLater);
             
-            // 3. 過濾出符合「已有庫存」且「效期介於今天到一個月內」的批次
             const expiringSoon = allItems.filter(i => {
                 const cleanQty = parseInt(i.qty) || 0;
                 if (!i.expiry || cleanQty <= 0) return false;
-                
-                // 將資料庫帶出的效期轉為純數字進行比對
                 const itemExpiryNum = parseInt(formatToYYYYMMDD(i.expiry));
                 if (isNaN(itemExpiryNum)) return false;
-                
                 return itemExpiryNum >= todayNum && itemExpiryNum <= oneMonthLaterNum;
             });
             
-            // 4. 計算總量低於安全庫存的品項
             const totalsMap = new Map();
             allItems.forEach(i => {
                 if(!totalsMap.has(i.name)) totalsMap.set(i.name, { qty: 0, min: i.min_qty || 0 });
                 totalsMap.get(i.name).qty += (parseInt(i.qty) || 0);
             });
-            
             let lowStockHtml = '';
             totalsMap.forEach((v, name) => {
                 if(v.qty <= v.min) lowStockHtml += `<p class="text-sm font-semibold">• ${name} : 目前庫存 ${v.qty} (門檻 ${v.min})</p>`;
