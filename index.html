@@ -264,6 +264,7 @@
         </div>
     </nav>
 
+    <!-- 💡 補回的 Alert 彈窗 -->
     <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-sm mx-4 w-full shadow-2xl">
             <p id="alertMessage" class="mb-4 font-bold text-gray-700 text-center"></p>
@@ -271,6 +272,7 @@
         </div>
     </div>
 
+    <!-- 設定系統 Modal -->
     <div id="settingsModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-md mx-4 w-full">
             <h3 class="text-lg font-semibold mb-4">系統設定</h3>
@@ -299,11 +301,25 @@
             setTimeout(() => { toast.remove(); }, 3000);
         }
 
+        // 💡 補回的 showAlert 函數，讓系統可以正常跳出各種警告不會報錯
+        function showAlert(message) {
+            const el = document.getElementById('alertMessage');
+            if (el) el.textContent = message;
+            const modal = document.getElementById('alertModal');
+            if (modal) { modal.classList.remove('hidden'); modal.classList.add('flex'); }
+            else { alert(message); }
+        }
+
+        function closeAlert() {
+            const modal = document.getElementById('alertModal');
+            if(modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+        }
+
         async function handlePortalLogin() {
             const acc = document.getElementById('loginAccount').value.trim();
             const pwd = document.getElementById('loginPassword').value.trim();
             const btn = document.getElementById('loginBtn');
-            if(!acc || !pwd) { alert("請輸入代號與密碼！"); return; }
+            if(!acc || !pwd) { showAlert("請輸入代號與密碼！"); return; }
             
             btn.disabled = true; btn.innerText = "連線驗證中...";
             try {
@@ -317,8 +333,8 @@
                     document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
                     document.getElementById('loginPortal').classList.add('hidden');
                     loadData(); 
-                } else { alert("⚠️ 登入失敗: " + res.error); }
-            } catch(e) { alert("🚨 系統登入異常：\n" + e.message); } 
+                } else { showAlert("⚠️ 登入失敗: " + res.error); }
+            } catch(e) { showAlert("🚨 系統登入異常：\n" + e.message); } 
             finally { btn.disabled = false; btn.innerText = "驗證身分並登入"; }
         }
 
@@ -346,17 +362,22 @@
             return lotStr.replace(/['"]/g, '').trim(); 
         }
 
+        // 💡 強化版的 loadData，遇到 CORS 或錯誤會優雅顯示不會死當
         async function loadData() {
             document.getElementById('loading-tag').classList.remove('hidden');
             try {
                 const response = await fetch(API_URL);
+                if (!response.ok) throw new Error("網路連線異常，請檢查 Apps Script 是否已授權並發布");
                 const data = await response.json();
                 allItems = data.items || [];
                 updateDashboard();
                 renderItems(allItems);
                 updateCategoryFilter();
                 updateManualIdList();
-            } catch (error) { showAlert('連線錯誤：' + error.message); }
+            } catch (error) { 
+                console.error("讀取資料失敗:", error);
+                showAlert('連線錯誤：請確認 Google Apps Script 權限是否已完成授權，並已重新發布為「新版本」！\n(詳細錯誤: ' + error.message + ')'); 
+            }
             document.getElementById('loading-tag').classList.add('hidden');
         }
 
@@ -457,14 +478,14 @@
             const btn = document.getElementById(`inline-btn-${index}`);
             const inputField = document.getElementById(`inline-qty-${index}`);
             const newQty = inputField.value;
-            if (newQty === "" || newQty < 0) { alert("請輸入正確的數量！"); return; }
-            if (!CURRENT_USER_NAME) { alert("請先登入系統！"); return; }
+            if (newQty === "" || newQty < 0) { showAlert("請輸入正確的數量！"); return; }
+            if (!CURRENT_USER_NAME) { showAlert("請先登入系統！"); return; }
             const item = allItems[index], originalHTML = btn.innerHTML;
             btn.disabled = true; inputField.disabled = true; btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i>';
             try {
                 await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[首頁手動盤點]' });
                 await loadData(); 
-            } catch (error) { alert('盤點失敗: ' + error.message); } 
+            } catch (error) { showAlert('盤點失敗: ' + error.message); } 
             finally { btn.disabled = false; inputField.disabled = false; btn.innerHTML = originalHTML; }
         }
 
@@ -555,7 +576,6 @@
             startScanner();
         }
 
-        // 💡 智慧掃描模組：縮放修復與錯誤防卡死
         function startScanner() {
             if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; }
             document.getElementById('scannerPlaceholder').classList.add('hidden');
@@ -610,7 +630,6 @@
                     }
                 }).catch(()=>{});
             }, () => {}).then(() => {
-                // 💡 安全的縮放拉桿綁定
                 setTimeout(() => {
                     const video = document.querySelector('#reader video');
                     if (video && video.srcObject) {
@@ -639,7 +658,6 @@
             }).catch(err => { showToast('相機啟動失敗：' + err); document.getElementById('scannerPlaceholder').classList.remove('hidden'); });
         }
 
-        // 💡 所有 API 送出皆確保發生例外時能完美解鎖 UI
         async function submitData(params) {
             const response = await fetch(API_URL, {
                 method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params)
@@ -655,7 +673,7 @@
             const name = document.getElementById('scanName').value.trim();
             let lot = "", expiry = "", price = 0;
             
-            if (!qty || !scannedData) { alert('請填寫數量！'); return; }
+            if (!qty || !scannedData) { showAlert('請填寫數量！'); return; }
 
             if (scanMode === 'inbound') {
                 lot = document.getElementById('scanLot').value.trim();
@@ -683,7 +701,7 @@
                 await loadData();
                 startScanner(); 
             } catch (error) {
-                alert('提交失敗：' + error.message);
+                showAlert('提交失敗：' + error.message);
             } finally { btn.disabled = false; btn.innerText = "確認提交"; }
         }
 
@@ -732,7 +750,7 @@
             const qty = document.getElementById('manualQty').value;
             let lot = "", expiry = "", price = 0;
             
-            if (!id || !qty) { alert('請確實填寫 ID 和數量！'); return; }
+            if (!id || !qty) { showAlert('請確實填寫 ID 和數量！'); return; }
 
             if (type === '入庫') {
                 lot = document.getElementById('manualLot').value.trim();
@@ -740,7 +758,7 @@
                 price = document.getElementById('manualPrice').value;
             } else {
                 const batchSelect = document.getElementById('manualBatchSelect').value;
-                if(!batchSelect) { alert("無可用批次，無法執行作業！"); return; }
+                if(!batchSelect) { showAlert("無可用批次，無法執行作業！"); return; }
                 const batchData = JSON.parse(batchSelect);
                 lot = batchData.lot; expiry = batchData.expiry;
             }
@@ -754,14 +772,14 @@
                     type: type, id: id, name: name, lot: lot, expiry: expiry,
                     qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: baseNote
                 });
-                alert('手動單據提交成功！');
+                showAlert('手動單據提交成功！');
                 document.getElementById('manualId').value = ''; document.getElementById('manualName').value = '';
                 document.getElementById('manualLot').value = ''; document.getElementById('manualExpiry').value = '';
                 document.getElementById('manualQty').value = ''; document.getElementById('manualPrice').value = '';
                 document.getElementById('manualBatchSelect').innerHTML = '';
                 await loadData();
             } catch (error) {
-                alert('提交失敗：' + error.message);
+                showAlert('提交失敗：' + error.message);
             } finally { btn.disabled = false; btn.innerText = "送出作業"; }
         }
 
@@ -813,10 +831,9 @@
 
         function showSettings() { document.getElementById('settingsModal').classList.remove('hidden'); document.getElementById('settingsModal').classList.add('flex'); }
         function saveSettings() { closeModals(); }
-        function closeAlert() { document.getElementById('alertModal').classList.add('hidden'); document.getElementById('alertModal').classList.remove('flex'); }
         function closeModals() {
             isScanningActive = false;
-            document.getElementById('alertModal').classList.add('hidden'); document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').classList.remove('flex');
+            document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').classList.remove('flex');
             if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; document.getElementById('scannerPlaceholder').classList.remove('hidden'); }
         }
         document.querySelectorAll('.modal-overlay').forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) closeModals(); }); });
