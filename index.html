@@ -17,7 +17,6 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        /* 超商級無干擾浮動提示 (Toast) */
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; animation: fadeInOut 2.5s forwards; font-weight: bold; font-size: 14px; text-align: center; }
         .toast.error { background: #ef4444; color: white; border: 2px solid #b91c1c; }
@@ -29,7 +28,6 @@
 
     <div id="toast-container"></div>
 
-    <!-- 全螢幕使用者登入限制區塊 -->
     <div id="loginPortal" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div class="text-center">
@@ -51,7 +49,6 @@
         </div>
     </div>
 
-    <!-- 頂部導航 -->
     <header class="bg-white shadow-sm sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-clinic-medical mr-2"></i>山石診所智慧庫存</h1>
@@ -63,10 +60,8 @@
         </div>
     </header>
 
-    <!-- 主內容區 -->
     <main id="mainContent" class="max-w-6xl mx-auto px-4 py-6">
         
-        <!-- 分頁 1：首頁儀表板與總覽 -->
         <div id="dashboardView" class="space-y-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow">
@@ -114,7 +109,6 @@
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
-        <!-- 分頁 2：掃描作業頁面 -->
         <div id="scannerView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>掃碼作業</h2>
@@ -150,25 +144,22 @@
                         <input type="text" id="scanName" readonly placeholder="系統自動帶入" class="w-full px-3 py-2 border rounded-lg bg-gray-100 font-bold text-slate-700 outline-none">
                     </div>
 
-                    <!-- 領用與盤點時顯示：批次選擇下拉選單 -->
                     <div id="scanBatchContainer" class="hidden">
                         <label class="block text-xs font-bold text-blue-600 mb-1">選擇批次 (系統已為您優先排序)</label>
                         <select id="scanBatchSelect" class="w-full px-3 py-2 border-2 border-blue-300 rounded-lg bg-white font-bold text-slate-700"></select>
                     </div>
 
-                    <!-- 入庫時顯示：手動輸入效期與批次 -->
                     <div id="scanManualDetails">
                         <div>
                             <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空將自動帶入效期數字)</span></label>
                             <input type="text" id="scanLot" placeholder="例如：260731" class="w-full px-3 py-2 border rounded-lg bg-white uppercase">
                         </div>
                         <div class="mt-3">
-                            <label class="block text-xs font-bold text-slate-500 mb-1">有效日期 <span class="text-blue-600 font-normal">(自動轉純數字 YYYYMMDD)</span></label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">有效日期 <span class="text-blue-600 font-normal">(自動轉純數字)</span></label>
                             <input type="date" id="scanExpiry" class="w-full px-3 py-2 border rounded-lg bg-white">
                         </div>
                     </div>
 
-                    <!-- 入庫專用：單價成本 -->
                     <div id="scanPriceContainer">
                         <label class="block text-xs font-bold text-slate-500 mb-1">單價成本</label>
                         <input type="number" id="scanPrice" placeholder="選填，供估值計算" class="w-full px-3 py-2 border rounded-lg bg-white">
@@ -189,7 +180,6 @@
             </div>
         </div>
 
-        <!-- 分頁 3：手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用辦理</h2>
@@ -212,20 +202,18 @@
                         <input type="text" id="manualName" placeholder="輸入 ID 後系統自動帶出" class="w-full px-3 py-2 border rounded-lg bg-gray-50">
                     </div>
 
-                    <!-- 領用與盤點批次選擇 -->
                     <div id="manualBatchContainer" class="hidden">
                         <label class="block text-xs font-bold text-blue-600 mb-1">選擇指定批次 *</label>
                         <select id="manualBatchSelect" class="w-full px-3 py-2 border-2 border-blue-300 rounded-lg bg-white font-bold text-slate-700"></select>
                     </div>
 
-                    <!-- 入庫手動細節 -->
                     <div id="manualDetailsContainer">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空自動帶入效期)</span></label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空自動帶入)</span></label>
                             <input type="text" id="manualLot" placeholder="選填" class="w-full px-3 py-2 border rounded-lg uppercase">
                         </div>
                         <div class="mt-3">
-                            <label class="block text-xs font-bold text-slate-500 mb-1">有效日期 <span class="text-blue-600 font-normal">(自動轉純數字 YYYYMMDD)</span></label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">有效日期 <span class="text-blue-600 font-normal">(自動轉純數字)</span></label>
                             <input type="date" id="manualExpiry" class="w-full px-3 py-2 border rounded-lg">
                         </div>
                     </div>
@@ -247,7 +235,6 @@
             </div>
         </div>
 
-        <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態分析</h2>
@@ -256,7 +243,6 @@
         </div>
     </main>
 
-    <!-- 底部導航列 -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
         <div class="max-w-6xl mx-auto flex justify-around py-2">
             <button onclick="switchTab('dashboard')" class="nav-item active flex flex-col items-center py-2 px-4">
@@ -278,7 +264,6 @@
         </div>
     </nav>
 
-    <!-- 系統訊息 -->
     <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-sm mx-4 w-full shadow-2xl">
             <p id="alertMessage" class="mb-4 font-bold text-gray-700 text-center"></p>
@@ -286,7 +271,6 @@
         </div>
     </div>
 
-    <!-- 設定 Modal -->
     <div id="settingsModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-md mx-4 w-full">
             <h3 class="text-lg font-semibold mb-4">系統設定</h3>
@@ -303,11 +287,9 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec";
         let allItems = [], filteredItems = [], scanMode = 'inbound', scannedData = null, html5QrCode = null, isScanningActive = false;
         let CURRENT_USER_NAME = "";
-        let lastScanTime = 0; // 超商掃描防抖時間戳
+        let lastScanTime = 0; 
 
-        // ==========================================
-        // 浮動通知 Toast (不卡死相機鏡頭)
-        // ==========================================
+        // 浮動通知 Toast
         function showToast(message, type = 'error') {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
@@ -434,9 +416,7 @@
                     <div class="bg-white rounded-lg shadow ${statusClass} batch-card">
                         <div class="p-4">
                             <div class="flex justify-between items-start mb-2">
-                                <div>
-                                    <h3 class="font-bold text-slate-800 text-lg"><i class="fas fa-box text-blue-500 text-sm mr-1"></i> ${name}</h3>
-                                </div>
+                                <div><h3 class="font-bold text-slate-800 text-lg"><i class="fas fa-box text-blue-500 text-sm mr-1"></i> ${name}</h3></div>
                                 <span class="px-2 py-1 text-xs rounded font-bold ${latestStocktake >= today ? 'bg-green-100 text-green-700' : (latestStocktake >= weekAgo ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}">${statusText}</span>
                             </div>
                             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 text-sm bg-slate-50 p-3 rounded-lg border border-dashed">
@@ -522,41 +502,28 @@
             document.getElementById('existing-ids-list').innerHTML = ids.map(id => `<option value="${id}">`).join('');
         }
 
-        // ==========================================
-        // 🌟 批次下拉選單自動產生器 (FEFO 排序)
-        // ==========================================
         function populateBatchSelect(id, selectElementId, mode) {
             const select = document.getElementById(selectElementId);
             select.innerHTML = '';
             let batches = allItems.filter(i => i.id === id);
             
-            // 領用與盤點時過濾掉空庫存的舊批次
             if (mode === 'outbound' || mode === 'stocktake') {
                 batches = batches.filter(i => parseInt(i.qty) > 0 || mode === 'stocktake');
             }
-
             if (batches.length === 0) {
                 select.innerHTML = '<option value="">無歷史庫存批次記錄</option>';
                 return;
             }
-
-            // 按效期由舊到新排序 (FEFO)
             batches.sort((a, b) => (a.expiry > b.expiry ? 1 : -1));
-
             batches.forEach((b, index) => {
                 const option = document.createElement('option');
-                // 將批號資訊藏入 value
                 option.value = JSON.stringify({lot: b.lot, expiry: b.expiry, minQty: b.min_qty, oldQty: b.qty});
                 option.textContent = `效期: ${formatToYYYYMMDD(b.expiry)} | 批號: ${cleanLotString(b.lot)} (當前存量: ${b.qty})`;
-                // 第一筆加上推薦標籤
                 if (index === 0 && mode === 'outbound') option.textContent = '⭐ 優先出庫 | ' + option.textContent;
                 select.appendChild(option);
             });
         }
 
-        // ==========================================
-        // 🌟 掃描器動態 UI 控制
-        // ==========================================
         function setScanMode(mode) {
             scanMode = mode;
             document.getElementById('scanInbound').className = `flex-1 py-2 rounded-lg transition ${mode === 'inbound' ? 'bg-blue-600 text-white font-bold' : 'bg-gray-200 text-gray-700 font-bold'}`;
@@ -565,11 +532,8 @@
             
             const titles = { 'inbound': '入庫', 'outbound': '領用扣帳', 'stocktake': '實體盤點' };
             document.getElementById('scanFormTitle').innerText = `填寫表單明細 (${titles[mode]})`;
-            
-            const qtyLabel = document.getElementById('scanQtyLabel');
-            qtyLabel.innerText = mode === 'stocktake' ? '請輸入實盤數量 *' : '異動數量 *';
+            document.getElementById('scanQtyLabel').innerText = mode === 'stocktake' ? '請輸入實盤數量 *' : '異動數量 *';
 
-            // 動態顯隱欄位：入庫才需要手動打效期、單價；領用與盤點則是選批次
             if(mode === 'inbound') {
                 document.getElementById('scanManualDetails').classList.remove('hidden');
                 document.getElementById('scanPriceContainer').classList.remove('hidden');
@@ -591,9 +555,7 @@
             startScanner();
         }
 
-        // ==========================================
-        // 🌟 超商級防卡死相機邏輯
-        // ==========================================
+        // 💡 智慧掃描模組：縮放修復與錯誤防卡死
         function startScanner() {
             if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; }
             document.getElementById('scannerPlaceholder').classList.add('hidden');
@@ -607,22 +569,20 @@
                 if (!isScanningActive) return; 
                 
                 const now = Date.now();
-                if (now - lastScanTime < 1500) return; // 1.5秒冷卻防抖
+                if (now - lastScanTime < 1500) return; 
                 lastScanTime = now;
 
                 if (/^(https?:\/\/|www\.)/i.test(decodedText)) {
                     showToast("❌ 錯誤：這是一串網址！請對準物品條碼", "error");
-                    return; // 💡 發現網址不停止相機，僅浮動警告，完美防卡死
+                    return; 
                 }
 
                 const matchedItems = allItems.filter(i => i.id === decodedText);
-
                 if ((scanMode === 'outbound' || scanMode === 'stocktake') && matchedItems.length === 0) {
                     showToast(`❌ 錯誤：系統無此 ID (${decodedText}) 庫存`, "error");
-                    return; // 💡 超商邏輯：掃不到就報錯不中斷，讓你繼續掃下一個
+                    return; 
                 }
 
-                // 掃描成功進入結算表單
                 html5QrCode.stop().then(() => {
                     isScanningActive = false;
                     document.getElementById('scannerPlaceholder').classList.remove('hidden');
@@ -641,7 +601,6 @@
                         document.getElementById('scanQty').value = '';
                     } else {
                         populateBatchSelect(decodedText, 'scanBatchSelect', scanMode);
-                        // 若為盤點，自動把輸入框帶入目前的數量，讓使用者好修改
                         if (scanMode === 'stocktake') {
                             const firstOption = JSON.parse(document.getElementById('scanBatchSelect').value);
                             document.getElementById('scanQty').value = firstOption.oldQty || 0;
@@ -650,7 +609,44 @@
                         }
                     }
                 }).catch(()=>{});
-            }, () => {}).catch(err => { showToast('相機啟動失敗：' + err); document.getElementById('scannerPlaceholder').classList.remove('hidden'); });
+            }, () => {}).then(() => {
+                // 💡 安全的縮放拉桿綁定
+                setTimeout(() => {
+                    const video = document.querySelector('#reader video');
+                    if (video && video.srcObject) {
+                        const track = video.srcObject.getVideoTracks()[0];
+                        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+                        const slider = document.getElementById('zoom-slider');
+                        
+                        if (capabilities.zoom) {
+                            slider.min = capabilities.zoom.min || 1;
+                            slider.max = capabilities.zoom.max || 5;
+                            slider.step = capabilities.zoom.step || 0.1;
+                            slider.value = track.getSettings().zoom || 1;
+                            
+                            slider.oninput = async function() {
+                                try { await track.applyConstraints({ advanced: [{ zoom: parseFloat(this.value) }] }); } 
+                                catch(e) { console.log('設備不支援鏡頭縮放 API'); }
+                            };
+                            slider.disabled = false;
+                            slider.parentElement.style.opacity = '1';
+                        } else {
+                            slider.disabled = true;
+                            slider.parentElement.style.opacity = '0.4';
+                        }
+                    }
+                }, 800);
+            }).catch(err => { showToast('相機啟動失敗：' + err); document.getElementById('scannerPlaceholder').classList.remove('hidden'); });
+        }
+
+        // 💡 所有 API 送出皆確保發生例外時能完美解鎖 UI
+        async function submitData(params) {
+            const response = await fetch(API_URL, {
+                method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params)
+            });
+            if (!response.ok) throw new Error(`網路異常 (HTTP ${response.status})`);
+            const result = await response.text();
+            if (result !== 'Success') throw new Error(result || "伺服器無回應內容");
         }
 
         async function submitScan() {
@@ -667,11 +663,9 @@
                 price = document.getElementById('scanPrice').value;
             } else {
                 const batchData = JSON.parse(document.getElementById('scanBatchSelect').value);
-                lot = batchData.lot;
-                expiry = batchData.expiry;
+                lot = batchData.lot; expiry = batchData.expiry;
             }
 
-            // 💡 盤點時將方式寫入備註，避免破壞原始批號追蹤
             let baseNote = document.getElementById('scanNote').value;
             if (scanMode === 'stocktake') baseNote = '[掃描盤點] ' + baseNote;
 
@@ -686,20 +680,16 @@
                 document.getElementById('scanForm').classList.add('hidden');
                 document.getElementById('scanResult').classList.add('hidden');
                 document.getElementById('scanNote').value = '';
-                loadData();
-                startScanner(); // 超商邏輯：送出成功自動重啟相機準備掃下一個
+                await loadData();
+                startScanner(); 
             } catch (error) {
                 alert('提交失敗：' + error.message);
             } finally { btn.disabled = false; btn.innerText = "確認提交"; }
         }
 
-        // ==========================================
-        // 🌟 手動模式動態 UI 切換與預先帶入
-        // ==========================================
         function toggleManualMode() {
             const mode = document.getElementById('manualType').value;
-            const qtyLabel = document.getElementById('manualQtyLabel');
-            qtyLabel.innerText = mode === '盤點' ? '請輸入實盤數量 *' : '異動數量 *';
+            document.getElementById('manualQtyLabel').innerText = mode === '盤點' ? '請輸入實盤數量 *' : '異動數量 *';
 
             if(mode === '入庫') {
                 document.getElementById('manualDetailsContainer').classList.remove('hidden');
@@ -714,7 +704,7 @@
                 document.getElementById('manualName').readOnly = true;
                 document.getElementById('manualName').classList.add('bg-gray-100');
             }
-            autoFillManual(); // 切換模式時重新載入批次下拉選單
+            autoFillManual(); 
         }
 
         function autoFillManual() {
@@ -725,12 +715,8 @@
             if (itemMatches.length > 0) {
                 const item = itemMatches[0];
                 document.getElementById('manualName').value = item.name || '';
-                
-                if (mode === '入庫') {
-                    document.getElementById('manualPrice').value = item.price || '';
-                } else {
-                    populateBatchSelect(idVal, 'manualBatchSelect', mode === '領用' ? 'outbound' : 'stocktake');
-                }
+                if (mode === '入庫') document.getElementById('manualPrice').value = item.price || '';
+                else populateBatchSelect(idVal, 'manualBatchSelect', mode === '領用' ? 'outbound' : 'stocktake');
             } else {
                 document.getElementById('manualName').value = '';
                 document.getElementById('manualPrice').value = '';
@@ -773,18 +759,10 @@
                 document.getElementById('manualLot').value = ''; document.getElementById('manualExpiry').value = '';
                 document.getElementById('manualQty').value = ''; document.getElementById('manualPrice').value = '';
                 document.getElementById('manualBatchSelect').innerHTML = '';
-                loadData();
+                await loadData();
             } catch (error) {
                 alert('提交失敗：' + error.message);
             } finally { btn.disabled = false; btn.innerText = "送出作業"; }
-        }
-
-        async function submitData(params) {
-            const response = await fetch(API_URL, {
-                method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(params)
-            });
-            const result = await response.text();
-            if (result !== 'Success') throw new Error(result);
         }
 
         function switchTab(tab) {
@@ -792,29 +770,56 @@
             document.getElementById(tab + 'View').classList.remove('hidden');
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             event.currentTarget.classList.add('active');
-            if (tab === 'manual') toggleManualMode(); // 確保 UI 初始化
+            if (tab === 'manual') toggleManualMode(); 
+            if (tab === 'report') generateReport();
         }
 
-        function showSettings() {
-            document.getElementById('settingSheetId').value = "1yW1a5bmSTGsHhQlLE1T2-cj1bsM8YdKAMtMV-rY2_mk";
-            document.getElementById('settingsModal').classList.remove('hidden');
-            document.getElementById('settingsModal').classList.add('flex');
+        function generateReport() {
+            const container = document.getElementById('reportContent');
+            const formatNum = (d) => { return parseInt(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`); };
+            
+            const todayNum = formatNum(new Date());
+            const oneMonthLater = new Date(); oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+            const oneMonthLaterNum = formatNum(oneMonthLater);
+            
+            const expiringSoon = allItems.filter(i => {
+                if (!i.expiry || (parseInt(i.qty) || 0) <= 0) return false;
+                const itemExpiryNum = parseInt(formatToYYYYMMDD(i.expiry));
+                if (isNaN(itemExpiryNum)) return false;
+                return itemExpiryNum >= todayNum && itemExpiryNum <= oneMonthLaterNum;
+            });
+            
+            const totalsMap = new Map();
+            allItems.forEach(i => {
+                if(!totalsMap.has(i.name)) totalsMap.set(i.name, { qty: 0, min: i.min_qty || 0 });
+                totalsMap.get(i.name).qty += (parseInt(i.qty) || 0);
+            });
+            let lowStockHtml = '';
+            totalsMap.forEach((v, name) => {
+                if(v.qty <= v.min) lowStockHtml += `<p class="text-sm font-semibold">• ${name} : 目前庫存 ${v.qty} (門檻 ${v.min})</p>`;
+            });
+
+            container.innerHTML = `
+                <div class="p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <h4 class="font-bold text-amber-800 mb-2"><i class="fas fa-history"></i> 效期預警（一個月內到期批次）</h4>
+                    ${expiringSoon.length > 0 ? expiringSoon.map(i => `<p class="text-sm">• ${i.name} (批號: <span class="font-mono font-bold">${cleanLotString(i.lot)}</span>): 剩餘 ${i.qty} 個，將於 <span class="text-red-600 font-bold">${formatToYYYYMMDD(i.expiry)}</span> 到期</p>`).join('') : '<p class="text-sm text-gray-500">👍 目前無即將過期耗材。</p>'}
+                </div>
+                <div class="p-4 bg-red-50 rounded-lg border border-red-200 mt-3">
+                    <h4 class="font-bold text-red-800 mb-2"><i class="fas fa-exclamation-circle"></i> 低庫存警示品項總覽</h4>
+                    ${lowStockHtml ? lowStockHtml : '<p class="text-sm text-gray-500">👍 全品項皆高於安全水準。</p>'}
+                </div>
+            `;
         }
 
-        function saveSettings() { alert('設定儲存成功'); closeModals(); }
+        function showSettings() { document.getElementById('settingsModal').classList.remove('hidden'); document.getElementById('settingsModal').classList.add('flex'); }
+        function saveSettings() { closeModals(); }
         function closeAlert() { document.getElementById('alertModal').classList.add('hidden'); document.getElementById('alertModal').classList.remove('flex'); }
-
         function closeModals() {
             isScanningActive = false;
-            document.getElementById('alertModal').classList.add('hidden');
-            document.getElementById('settingsModal').classList.add('hidden');
-            document.getElementById('settingsModal').classList.remove('flex');
+            document.getElementById('alertModal').classList.add('hidden'); document.getElementById('settingsModal').classList.add('hidden'); document.getElementById('settingsModal').classList.remove('flex');
             if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; document.getElementById('scannerPlaceholder').classList.remove('hidden'); }
         }
-
-        document.querySelectorAll('.modal-overlay').forEach(modal => {
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModals(); });
-        });
+        document.querySelectorAll('.modal-overlay').forEach(modal => { modal.addEventListener('click', (e) => { if (e.target === modal) closeModals(); }); });
     </script>
 </body>
 </html>
