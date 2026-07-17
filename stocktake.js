@@ -56,6 +56,11 @@
   async function startLogisticsScanner() {
     await window.stopScanner('main');
     document.getElementById('reader').classList.remove('hidden');
+    document.getElementById('reader').innerHTML = '<div id="cameraStarting" style="color:#fff;padding:55px 12px;text-align:center">正在啟動相機…</div>';
+    if (typeof Html5Qrcode === 'undefined') {
+      document.getElementById('reader').innerHTML = '<div style="color:#fff;padding:30px;text-align:center">掃碼函式庫未載入，請重新整理頁面後再試。</div>';
+      return window.toast('掃碼函式庫未載入');
+    }
     const qr = new Html5Qrcode('reader');
     state.scanner = qr;
     try {
@@ -85,7 +90,7 @@
         disableFlip: false,
         experimentalFeatures: { useBarCodeDetectorIfSupported: true }
       };
-      await qr.start({ facingMode: 'environment' }, config, async code => {
+      const onScan = async code => {
         if (state.mode === 'stocktake' && session) {
           const now = Date.now();
           if (now - session.lastScan < 1000) return;
@@ -101,12 +106,21 @@
           refresh();
           document.getElementById('scanSubmit').textContent = '開始掃描盤點';
         }
-      }, () => {});
+      };
+      try {
+        await qr.start({ facingMode: { ideal: 'environment' } }, config, onScan, () => {});
+      } catch (rearCameraError) {
+        // 部分 Android／iOS 瀏覽器不接受 facingMode 約束；改以實際可用裝置 ID 啟動。
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || !cameras.length) throw rearCameraError;
+        const rear = cameras.find(camera => /back|rear|environment/i.test(camera.label)) || cameras[0];
+        await qr.start(rear.id, config, onScan, () => {});
+      }
       document.getElementById('scanStatus').textContent = '掃描中…';
     } catch (error) {
       await window.stopScanner('main');
-      document.getElementById('reader').classList.add('hidden');
-      window.toast('鏡頭無法啟動：' + error.message);
+      document.getElementById('reader').innerHTML = '<div style="color:#fff;padding:30px;text-align:center">無法啟動相機。請確認已允許相機權限，且沒有其他 App 正在使用鏡頭。</div>';
+      window.toast('鏡頭無法啟動：' + (error.message || error));
     }
   }
 
