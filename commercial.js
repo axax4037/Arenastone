@@ -1,5 +1,16 @@
 (() => {
   const session = { token: '', account: '', expiresAt: 0, timer: 0 };
+  const nativeFetch = window.fetch.bind(window);
+  // 舊版入庫／領用／盤點函式仍直接呼叫 fetch；在這一層補上權杖，避免漏傳。
+  window.fetch = (url, options = {}) => {
+    if (String(url) === API_URL && session.token && String(options.method || 'GET').toUpperCase() === 'POST' && options.body) {
+      try {
+        const body = JSON.parse(options.body);
+        if (!body.token) options = { ...options, body: JSON.stringify({ ...body, token: session.token }) };
+      } catch (_) {}
+    }
+    return nativeFetch(url, options);
+  };
   const badge = document.createElement('button');
   badge.className = 'hidden';
   document.querySelector('header').append(badge);
@@ -10,6 +21,7 @@
     if (!r.ok || !result.success) throw Error(result.error || '操作被拒絕');
     return result;
   };
+  window.COMMERCIAL_TOKEN = () => session.token;
   window.submitData = request;
   const logout = message => { clearInterval(session.timer); session.token = ''; badge.classList.add('hidden'); document.getElementById('login').classList.remove('hidden'); if (message) toast(message); };
   const tick = () => { const left = Math.ceil((session.expiresAt - Date.now()) / 1000); if (left <= 0) return logout('登入已逾時，請重新登入'); badge.classList.remove('hidden'); badge.textContent = `登入剩餘 ${String(Math.floor(left/60)).padStart(2,'0')}:${String(left%60).padStart(2,'0')}｜延長`; badge.style.color = left <= 300 ? '#b45309' : '#1d4ed8'; };
