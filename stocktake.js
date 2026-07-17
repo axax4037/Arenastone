@@ -3,7 +3,7 @@
   const originalOnCode = window.onOperationCode;
   let session = null;
 
-  function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; }
+  function setText(id, value) { const el = document.getElementById(id); if (el) el.textContent = value; const overlay = document.getElementById('cameraScanCount'); if (overlay) overlay.textContent = `已掃描 ${value} 件`; }
   function panel() {
     let el = document.getElementById('logisticsStocktakePanel');
     if (!el) {
@@ -12,6 +12,15 @@
       el.className = 'notice hidden';
       el.innerHTML = '物流掃描盤點：<strong id="logisticsCount">0</strong> 件<br><span class="muted">每掃一次相同條碼即累加 1 件；無需輸入數量。</span>';
       document.getElementById('scanQty').closest('label').after(el);
+    }
+    let overlay = document.getElementById('cameraScanCount');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'cameraScanCount';
+      overlay.style.cssText = 'position:absolute;top:10px;left:10px;z-index:5;background:#166534;color:#fff;padding:7px 11px;border-radius:7px;font-weight:700;box-shadow:0 2px 8px #0008';
+      overlay.textContent = '已掃描 0 件';
+      const reader = document.getElementById('reader');
+      reader.style.position = 'relative'; reader.append(overlay);
     }
     return el;
   }
