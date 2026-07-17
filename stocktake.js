@@ -50,13 +50,9 @@
     const qr = new Html5Qrcode('reader');
     state.scanner = qr;
     try {
-      // 明確要求 QR Code 與 html5-qrcode 支援的所有一維碼格式。
-      // Object.values 可因應不同版本的函式庫，避免引用不存在的格式常數而使掃描器無法啟動。
-      const formats = typeof Html5QrcodeSupportedFormats === 'undefined'
-        ? undefined
-        : Object.values(Html5QrcodeSupportedFormats).filter(format => typeof format === 'number');
-      const config = { fps: 12, qrbox: { width: 250, height: 110 } };
-      if (formats && formats.length) config.formatsToSupport = formats;
+      // 比照 Gemini 版：不限定條碼格式，也不以狹長框裁切畫面。
+      // QR Code 需要方形完整視野；一維碼則由函式庫在完整影像中自動偵測。
+      const config = { fps: 12, disableFlip: false };
       await qr.start({ facingMode: 'environment' }, config, async code => {
         if (state.mode === 'stocktake' && session) {
           const now = Date.now();
