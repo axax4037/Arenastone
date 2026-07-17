@@ -28,6 +28,7 @@
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbypbBGczyPbjs0nd_d0NasMaXi0UjZjspq3VhWuCb6LsJyXhMPI5FGSWRUBE1nME35TPA/exec';
 let state={items:[],user:'',mode:'inbound',scanner:null,homeScanner:null,lastScan:0};
+window.state=state;
 const $=id=>document.getElementById(id); const esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 function toast(message,type='error'){const e=document.createElement('div');e.className='toast '+type;e.textContent=message;$('toastBox').append(e);setTimeout(()=>e.remove(),2800)}
 function iso(v){if(!v)return '';const m=String(v).match(/(\d{4})[-/]?(\d{2})[-/]?(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:''}
@@ -55,5 +56,7 @@ async function toggleHomeScan(){if(state.homeScanner){await stopScanner('home');
 function renderReport(){const items=byItem(),now=new Date(),soon=new Date(now);soon.setMonth(soon.getMonth()+1);const exp=items.filter(x=>x.expiry&&new Date(x.expiry)>=now&&new Date(x.expiry)<=soon&&x.qty>0),low=items.filter(x=>x.qty<=Number(x.min_qty||0));$('reportBody').innerHTML=`<h3>一個月內到期</h3>${exp.length?exp.map(x=>`<p>${esc(x.name)}｜${esc(x.expiry)}｜剩餘 ${x.qty}</p>`).join(''):'<p class="muted">無。</p>'}<h3>低庫存</h3>${low.length?low.map(x=>`<p>${esc(x.name)}｜目前 ${x.qty}／安全 ${x.min_qty||0}</p>`).join(''):'<p class="muted">無。</p>'}`}
 $('loginBtn').onclick=async()=>{const b=$('loginBtn');b.disabled=true;try{const r=await request({action:'login',account:$('account').value.trim(),password:$('password').value});state.user=r.name;$('userTag').textContent='👤 '+r.name;$('login').classList.add('hidden');await load()}catch(e){toast('登入失敗：'+e.message)}finally{b.disabled=false}};$('password').onkeydown=e=>{if(e.key==='Enter')$('loginBtn').click()};document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));$(b.dataset.tab).classList.add('active');if(b.dataset.tab==='report')renderReport()});document.querySelectorAll('.mode').forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;scanModeUI()});$('startScan').onclick=startOperationScanner;$('scanSubmit').onclick=submitScan;$('scanCancel').onclick=()=>{$('scanForm').classList.add('hidden');$('scanStatus').textContent='尚未掃描條碼'};$('manualType').onchange=manualUI;$('manualId').oninput=fillManual;$('manualSubmit').onclick=submitManual;$('homeScanBtn').onclick=toggleHomeScan;['search','category','lowOnly'].forEach(id=>$(id).addEventListener(id==='lowOnly'?'change':'input',renderCards));scanModeUI();manualUI();
 </script>
+<script src="stocktake.js"></script>
+<script src="commercial.js"></script>
 </body>
 </html>
