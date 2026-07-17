@@ -59,9 +59,32 @@
     const qr = new Html5Qrcode('reader');
     state.scanner = qr;
     try {
-      // 比照 Gemini 版：不限定條碼格式，也不以狹長框裁切畫面。
-      // QR Code 需要方形完整視野；一維碼則由函式庫在完整影像中自動偵測。
-      const config = { fps: 12, disableFlip: false };
+      // QR Code 需要正方形辨識區；BarcodeDetector 可用時優先使用硬體最佳化解碼器。
+      // 同時保留常用一維碼格式，避免只支援 QR 的瀏覽器設定造成條碼失效。
+      const formats = [
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.CODE_93,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.RSS_14,
+        Html5QrcodeSupportedFormats.RSS_EXPANDED
+      ].filter(format => typeof format === 'number');
+      const config = {
+        fps: 10,
+        qrbox: (width, height) => {
+          const side = Math.min(300, Math.floor(Math.min(width, height) * 0.82));
+          return { width: side, height: side };
+        },
+        formatsToSupport: formats,
+        disableFlip: false,
+        experimentalFeatures: { useBarCodeDetectorIfSupported: true }
+      };
       await qr.start({ facingMode: 'environment' }, config, async code => {
         if (state.mode === 'stocktake' && session) {
           const now = Date.now();
