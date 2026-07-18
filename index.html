@@ -16,7 +16,6 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        /* 掃碼視窗高度硬縮小一半，識別範圍不變 */
         #scannerContainer, #homeScannerContainer { max-height: 160px !important; overflow: hidden; position: relative; width: 100%; border-radius: 12px; }
         #reader, #homeReader { width: 100% !important; border: none !important; }
         #reader video, #homeReader video { object-fit: cover; max-height: 160px !important; width: 100% !important; }
@@ -89,7 +88,7 @@
                 </div>
             </div>
 
-            <!-- 💡 修正 3：首頁頂部直接新增「掃碼快速盤點」操作區 -->
+            <!-- 首頁頂部直接新增「掃碼快速盤點」操作區 -->
             <div class="bg-slate-800 p-3 rounded-xl shadow text-white flex flex-col gap-2">
                 <div class="flex justify-between items-center">
                     <span class="text-sm font-bold"><i class="fas fa-search-dollar mr-1 text-amber-400"></i> 現場盤點優先作業</span>
@@ -200,7 +199,7 @@
             </div>
         </div>
 
-        <!-- 分頁 3：手動作業頁面 -->
+        <!-- 手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用辦理</h2>
@@ -255,11 +254,32 @@
         <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態分析</h2>
+                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態 analysis耗材分析</h2>
                 <div id="reportContent" class="space-y-3"></div>
             </div>
         </div>
     </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
+        <div class="max-w-6xl mx-auto flex justify-around py-2">
+            <button onclick="switchTab('dashboard')" class="nav-item active flex flex-col items-center py-2 px-4">
+                <i class="fas fa-home text-xl mb-1"></i>
+                <span class="text-xs">首頁</span>
+            </button>
+            <button onclick="switchTab('scanner')" class="nav-item flex flex-col items-center py-2 px-4">
+                <i class="fas fa-barcode text-xl mb-1"></i>
+                <span class="text-xs">掃碼</span>
+            </button>
+            <button onclick="switchTab('manual')" class="nav-item flex flex-col items-center py-2 px-4">
+                <i class="fas fa-edit text-xl mb-1"></i>
+                <span class="text-xs">手動作業</span>
+            </button>
+            <button onclick="switchTab('report')" class="nav-item flex flex-col items-center py-2 px-4">
+                <i class="fas fa-chart-bar text-xl mb-1"></i>
+                <span class="text-xs">報表</span>
+            </button>
+        </div>
+    </nav>
 
     <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-sm mx-4 w-full shadow-2xl">
@@ -347,6 +367,7 @@
             document.getElementById('loading-tag').classList.remove('hidden');
             try {
                 const response = await fetch(API_URL);
+                if (!response.ok) throw new Error("網路連線異常");
                 const data = await response.json();
                 allItems = data.items || [];
                 updateDashboard();
@@ -379,9 +400,6 @@
             document.getElementById('lowStockCount').textContent = lowStockCount;
         }
 
-        // ==========================================
-        // 💡 修正 2：同品項下，有效日期若相同，自動合併渲染
-        // ==========================================
         function renderItems(items) {
             const container = document.getElementById('itemsList');
             const grouped = new Map();
@@ -393,7 +411,6 @@
                     const pNameMap = grouped.get(item.name);
                     const expiryKey = formatToYYYYMMDD(item.expiry);
                     
-                    // 如果有效日期相同，自動合併為同一筆
                     if (pNameMap.has(expiryKey)) {
                         const existing = pNameMap.get(expiryKey);
                         existing.qty += parseInt(item.qty);
@@ -452,7 +469,7 @@
                                 <div><div class="text-xs text-gray-500">最後盤點</div><div class="font-mono text-xs text-gray-600">${formatToYYYYMMDDHHMM(latestStocktake)}</div></div>
                             </div>
                             <div class="mt-2 pt-2 border-t">
-                                <p class="text-xs text-slate-500 font-bold mb-1.5">📦 實體合併效期盤點：</p>
+                                <p class="text-xs text-slate-400 font-bold mb-1.5">📦 實體合併效期盤點：</p>
                                 <div class="space-y-2">
                                     ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot), cleanExpiry = formatToYYYYMMDD(b.expiry);
@@ -490,9 +507,6 @@
             container.innerHTML = html;
         }
 
-        // ==========================================
-        // 💡 修正 3：首頁無縫開啟掃描盤點，自動錨定耗材
-        // ==========================================
         function toggleHomeScanner() {
             const panel = document.getElementById('homeScannerPanel');
             const btn = document.getElementById('homeScanTriggerBtn');
@@ -519,17 +533,13 @@
                 if (now - lastScanTime < 1500) return;
                 lastScanTime = now;
 
-                // 搜尋首頁對應的 DOM 節點
                 const targetRow = document.querySelector(`[data-scan-id="${decodedText}"]`);
                 if (targetRow) {
                     showToast("🎯 已成功錨定條碼品項！", "success");
                     const globalIdx = targetRow.id.replace('inline-row-', '');
                     
-                    // 關閉相機
                     toggleHomeScanner();
-                    // 自動觸發該項目的盤點專注模式
                     startInlineStocktake(globalIdx);
-                    // 畫面自動平滑滾動到該特定欄位
                     targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
                     showToast(`❌ 現場列表無此耗材 ID (${decodedText})`, "error");
@@ -588,7 +598,6 @@
             } 
         }
 
-        // 💡 修正 1：只要伺服器回傳狀態為 OK (200) 且長度大於 0，一律核准為成功，阻斷 CORS/undefined 誤報
         async function submitData(params) {
             const response = await fetch(API_URL, {
                 method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params)
@@ -654,6 +663,21 @@
                 document.getElementById('scanName').readOnly = true;
                 document.getElementById('scanName').classList.add('bg-gray-100');
             }
+        }
+
+        // 💡 修正 1：獨立且正確宣告 updateCategoryFilter，徹底排除定義遺失 Bug
+        function updateCategoryFilter() {
+            const el = document.getElementById('categoryFilter');
+            if (!el) return;
+            const categories = [...new Set(allItems.map(i => i.category).filter(Boolean))];
+            el.innerHTML = '<option value="">全部分類</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
+        function updateManualIdList() {
+            const el = document.getElementById('existing-ids-list');
+            if (!el) return;
+            const ids = [...new Set(allItems.map(i => i.id).filter(Boolean))];
+            el.innerHTML = ids.map(id => `<option value="${id}">`).join('');
         }
 
         function startScanner() {
@@ -793,7 +817,6 @@
         }
 
         function switchTab(tab) {
-            // 切換時防呆關閉首頁相機
             if (homeQrCode) { toggleHomeScanner(); }
             document.querySelectorAll('#mainContent > div').forEach(div => div.classList.add('hidden'));
             document.getElementById(tab + 'View').classList.remove('hidden');
@@ -801,6 +824,30 @@
             event.currentTarget.classList.add('active');
             if (tab === 'manual') toggleManualMode(); 
             if (tab === 'report') generateReport();
+        }
+
+        function filterItems() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const category = document.getElementById('categoryFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const lowStockOnly = document.getElementById('lowStockOnly').checked;
+            const today = new Date().toISOString().split('T')[0];
+            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            
+            filteredItems = allItems.filter(item => {
+                const matchSearch = !search || item.name.toLowerCase().includes(search) || item.id.toLowerCase().includes(search) || (item.lot && item.lot.toLowerCase().includes(search));
+                const matchCategory = !category || item.category === category;
+                let matchStatus = true, matchLowStock = true;
+                if (status === 'today' && !(item.last_stocktake >= today)) matchStatus = false;
+                if (status === 'week' && !(item.last_stocktake >= weekAgo && item.last_stocktake < today)) matchStatus = false;
+                if (status === 'overdue' && item.last_stocktake >= weekAgo) matchStatus = false;
+                if (lowStockOnly) {
+                    const itemTotal = allItems.filter(i => i.name === item.name).reduce((sum, i) => sum + (parseInt(i.qty) || 0), 0);
+                    if (itemTotal > (item.min_qty || 0)) matchLowStock = false;
+                }
+                return matchSearch && matchCategory && matchStatus && matchLowStock;
+            });
+            renderItems(filteredItems);
         }
 
         function generateReport() {
