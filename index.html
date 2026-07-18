@@ -16,10 +16,9 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        /* 擴大鏡頭顯示範圍並移除框線限制，支援無死角 QR 掃描 */
-        #scannerContainer, #homeScannerContainer { max-height: 250px !important; overflow: hidden; position: relative; width: 100%; border-radius: 12px; }
+        /* 💡 修正：移除硬性高度裁切，改為自適應，讓正方形的 QR Code 能夠完整呈現與辨識 */
+        #scannerContainer, #homeScannerContainer { position: relative; width: 100%; border-radius: 12px; overflow: hidden; }
         #reader, #homeReader { width: 100% !important; border: none !important; }
-        #reader video, #homeReader video { object-fit: cover; max-height: 250px !important; width: 100% !important; }
         
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; animation: fadeInOut 2.5s forwards; font-weight: bold; font-size: 14px; text-align: center; }
@@ -32,6 +31,7 @@
 
     <div id="toast-container"></div>
 
+    <!-- 登入視窗 -->
     <div id="loginPortal" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div class="text-center">
@@ -53,6 +53,7 @@
         </div>
     </div>
 
+    <!-- 頂部導航 -->
     <header class="bg-white shadow-sm sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-clinic-medical mr-2"></i>山石診所智慧庫存</h1>
@@ -67,6 +68,7 @@
 
     <main id="mainContent" class="max-w-6xl mx-auto px-4 py-6">
         
+        <!-- 首頁儀表板與總覽 -->
         <div id="dashboardView" class="space-y-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow">
@@ -87,23 +89,25 @@
                 </div>
             </div>
 
+            <!-- 條碼品項盤點機模組 -->
             <div class="bg-slate-800 p-3 rounded-xl shadow text-white flex flex-col gap-2">
                 <div class="flex justify-between items-center">
                     <div>
                         <span class="text-sm font-bold block"><i class="fas fa-qrcode mr-1 text-amber-400"></i> 條碼品項盤點機</span>
-                        <span class="text-[11px] text-slate-400 block mt-0.5">刷條碼自動 +1 累計 (同 POS 機)</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5">支援 QR Code / 網址 / 文字解析</span>
                     </div>
                     <button onclick="toggleHomeScanner()" id="homeScanTriggerBtn" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg">
                         <i class="fas fa-camera"></i> 開啟掃描盤點
                     </button>
                 </div>
                 <div id="homeScannerPanel" class="hidden bg-black p-2 rounded-lg relative">
-                    <div id="homeScannerContainer" class="border border-slate-700">
+                    <div id="homeScannerContainer" class="border border-slate-700 bg-black">
                         <div id="homeReader"></div>
                     </div>
                     <div class="mt-2 flex justify-between items-center bg-gray-800 p-2 rounded-lg border border-gray-700">
-                        <div class="text-white text-xs leading-relaxed" id="homeScanStatus">等待掃描...</div>
-                        <button onclick="submitAllHomeScans()" id="homeScanSaveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-md transition flex items-center gap-1">
+                        <!-- 💡 確保長網址或文字可以自動換行 break-all -->
+                        <div class="text-white text-xs leading-relaxed break-all pr-2" id="homeScanStatus">等待掃描...</div>
+                        <button onclick="submitAllHomeScans()" id="homeScanSaveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-md transition flex items-center gap-1 shrink-0">
                             <i class="fas fa-check-circle"></i> 盤點完成
                         </button>
                     </div>
@@ -137,18 +141,19 @@
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
+        <!-- 掃描作業頁面 -->
         <div id="scannerView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>進出庫掃碼作業</h2>
                 <div class="flex gap-2 mb-4">
-                    <button onclick="setScanMode('inbound')" id="scanInbound" class="flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold transition">入庫</button>
-                    <button onclick="setScanMode('outbound')" id="scanOutbound" class="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold transition">領用</button>
+                    <button onclick="setScanMode('inbound')" id="scanInbound" class="flex-1 py-2 bg-blue-600 text-white rounded-lg font-bold transition">入庫建檔</button>
+                    <button onclick="setScanMode('outbound')" id="scanOutbound" class="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold transition">領用扣帳</button>
                 </div>
                 
-                <div id="scannerContainer" class="border-2 border-slate-800 bg-black min-h-[160px] flex flex-col justify-center items-center">
+                <div id="scannerContainer" class="border-2 border-slate-800 bg-black flex flex-col justify-center items-center">
                     <div id="reader"></div>
                     <div id="scannerPlaceholder" class="p-4 text-center">
-                        <p class="text-gray-400 text-sm mb-2">點擊下方按鈕啟動相機掃描</p>
+                        <p class="text-gray-400 text-sm mb-2">點擊下方按鈕啟動全能掃描</p>
                         <button onclick="startScanner()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-lg text-sm">
                             <i class="fas fa-camera mr-2"></i> 啟動相機
                         </button>
@@ -162,7 +167,8 @@
                 </div>
 
                 <div id="scanResult" class="mt-2 hidden text-center border-b pb-1">
-                    <p class="text-green-600 font-bold text-sm">✅ 條碼鎖定：<span id="scannedCode" class="font-mono text-slate-800"></span></p>
+                    <!-- 💡 確保長網址或文字可以換行 -->
+                    <p class="text-green-600 font-bold text-sm break-all">✅ 條碼鎖定：<span id="scannedCode" class="font-mono text-slate-800"></span></p>
                 </div>
                 
                 <div id="scanForm" class="hidden mt-3 space-y-3 p-4 bg-blue-50 rounded-lg border">
@@ -172,7 +178,7 @@
                         <input type="text" id="scanName" placeholder="掃碼自動帶入，新品可手打" class="w-full px-3 py-2 border rounded-lg font-bold text-slate-700 outline-none text-sm bg-white">
                     </div>
                     <div id="scanBatchContainer" class="hidden">
-                        <label class="block text-xs font-bold text-blue-600 mb-1">選擇批次</label>
+                        <label class="block text-xs font-bold text-blue-600 mb-1">選擇歷史批次</label>
                         <select id="scanBatchSelect" class="w-full px-3 py-2 border-2 border-blue-300 rounded-lg bg-white font-bold text-slate-700 text-sm"></select>
                     </div>
                     <div id="scanManualDetails">
@@ -205,6 +211,7 @@
             </div>
         </div>
 
+        <!-- 手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>無條碼手動入庫/領用</h2>
@@ -217,7 +224,7 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">品項 ID / 條碼 *</label>
+                        <label class="block text-xs font-bold text-slate-500 mb-1">自訂 ID / 代碼 *</label>
                         <input type="text" id="manualId" placeholder="請輸入 ID" class="w-full px-3 py-2 border rounded-lg font-mono font-bold" list="existing-ids-list" oninput="autoFillManual()">
                         <datalist id="existing-ids-list"></datalist>
                     </div>
@@ -256,6 +263,7 @@
             </div>
         </div>
 
+        <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態耗材分析</h2>
@@ -471,7 +479,7 @@
             const grouped = new Map();
             
             items.forEach(item => {
-                if (parseInt(item.qty) >= 0) { // 顯示所有包含0的庫存，以利盤點發現問題
+                if (parseInt(item.qty) >= 0) {
                     if (!grouped.has(item.name)) grouped.set(item.name, new Map());
                     const pNameMap = grouped.get(item.name);
                     const expiryKey = formatToYYYYMMDD(item.expiry);
@@ -534,20 +542,19 @@
                                     ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot), cleanExpiry = formatToYYYYMMDD(b.expiry);
                                         const globalIndex = allItems.findIndex(i => i.id === b.id && formatToYYYYMMDD(i.expiry) === cleanExpiry);
-                                        
                                         const isBarcode = /^\\d{5,}$/.test(b.id) || /^[A-Za-z0-9\\-_]{7,}$/.test(b.id);
 
                                         return `
-                                            <div id="inline-row-${globalIndex}" data-scan-id="${b.id}" class="p-3 rounded-xl border bg-slate-50/50 flex flex-col transition-all">
+                                            <div id="inline-row-${globalIndex}" class="p-3 rounded-xl border bg-slate-50/50 flex flex-col transition-all">
                                                 <div class="flex justify-between items-start text-xs">
-                                                    <div>
-                                                        <p class="font-mono text-gray-400">ID: ${b.id}</p>
+                                                    <div class="max-w-[70%]">
+                                                        <p class="font-mono text-gray-400 break-all">ID: ${b.id}</p>
                                                         <p class="text-slate-700 font-medium">效期: <span class="font-bold text-blue-700">${cleanExpiry}</span> (原庫存: ${b.qty})</p>
                                                     </div>
-                                                    <div id="action-trigger-box-${globalIndex}">
+                                                    <div id="action-trigger-box-${globalIndex}" class="shrink-0 flex items-center">
                                                         ${isBarcode 
-                                                            ? `<button onclick="showToast('條碼用品請使用上方【相機】直接刷入條碼累計！', 'error')" class="bg-gray-200 text-gray-500 border border-gray-300 px-2 py-1 rounded text-[11px] font-bold"><i class="fas fa-barcode"></i> 限掃碼</button>`
-                                                            : `<button onclick="startInlineStocktake(${globalIndex}, false)" class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold"><i class="fas fa-keyboard"></i> 手動輸入</button>`
+                                                            ? `<button onclick="showToast('條碼用品請開啟上方【相機】直接刷條碼累計！', 'error')" class="bg-gray-200 text-gray-500 border border-gray-300 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap"><i class="fas fa-barcode"></i> 限掃碼</button>`
+                                                            : `<button onclick="startInlineStocktake(${globalIndex}, false)" class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold whitespace-nowrap"><i class="fas fa-keyboard"></i> 手動輸入</button>`
                                                         }
                                                     </div>
                                                 </div>
@@ -557,7 +564,7 @@
                                                         <button onclick="decrementInlineQty(${globalIndex})" id="inline-dec-btn-${globalIndex}" class="hidden bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded font-bold text-xs shadow-sm transition">-1</button>
                                                         <input type="number" id="inline-qty-${globalIndex}" value="0" disabled class="w-14 text-center border-2 border-slate-300 p-1 rounded font-mono font-bold text-sm bg-gray-100 outline-none">
                                                     </div>
-                                                    <div class="flex gap-1">
+                                                    <div class="flex gap-1 shrink-0">
                                                         <button onclick="submitCardStocktake(${globalIndex})" id="inline-save-btn-${globalIndex}" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-bold shadow-sm hidden transition">單獨儲存</button>
                                                         <button onclick="endInlineStocktake(${globalIndex})" id="inline-end-btn-${globalIndex}" class="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-bold shadow-sm hidden transition">放棄</button>
                                                     </div>
@@ -611,8 +618,8 @@
             homeQrCode = new Html5Qrcode('homeReader');
             isHomeScanningActive = true;
             
-            // 💡 移除 qrbox 限制，改用全局解析，原生完美支援所有 QR Code 與條碼
-            const config = { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A ] }; 
+            // 💡 修正 1：移除長寬比與格式限制，改用方形 qrbox 220 捕捉完整的 QR Code 與條碼
+            const config = { fps: 15, qrbox: { width: 220, height: 220 } }; 
             
             try {
                 await homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -621,10 +628,16 @@
                     if (now - lastScanTime < 1000) return; 
                     lastScanTime = now;
 
-                    const targetRow = document.querySelector(`[data-scan-id="${decodedText}"]`);
-                    if (targetRow) {
-                        const globalIdx = parseInt(targetRow.id.replace('inline-row-', ''));
-                        
+                    // 💡 修正 3：防禦 URL 或特殊字元的 DOM 尋找當機
+                    let globalIdx = -1;
+                    for (let i = 0; i < allItems.length; i++) {
+                        if (allItems[i].id === decodedText && document.getElementById(`inline-row-${i}`)) {
+                            globalIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (globalIdx !== -1) {
                         startInlineStocktake(globalIdx, true);
                         
                         const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
@@ -634,9 +647,9 @@
                         const itemName = allItems[globalIdx].name;
                         document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: <span class="text-lg font-bold">${qtyInput.value}</span>`;
                         
-                        showToast(`🎯 掃描成功！庫存已 +1 (目前總計: ${qtyInput.value})`, "success");
+                        showToast(`🎯 掃描成功！庫存已 +1`, "success");
                     } else {
-                        showToast(`❌ 列表無此條碼 ID (${decodedText})`, "error");
+                        showToast(`❌ 列表無此條碼 ID 庫存建檔`, "error");
                     }
                 }, () => {});
             } catch (err) {
@@ -728,7 +741,7 @@
             } catch (error) { 
                 showAlert('上傳失敗: ' + error.message); 
                 saveBtn.disabled = false; endBtn.disabled = false; inputField.disabled = false;
-                saveBtn.innerText = "儲存";
+                saveBtn.innerText = "單獨儲存";
             } 
         }
 
@@ -886,8 +899,7 @@
             html5QrCode = new Html5Qrcode('reader');
             isScanningActive = true;
             
-            // 💡 全局解鎖，支援無死角 QR 掃描
-            const config = { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A ] };
+            const config = { fps: 15, qrbox: { width: 220, height: 220 } };
 
             try {
                 await html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -898,7 +910,7 @@
 
                     const matchedItems = allItems.filter(i => i.id === decodedText);
                     if (scanMode === 'outbound' && matchedItems.length === 0) {
-                        showToast(`❌ 錯誤：系統無此品項 ID (${decodedText})`, "error");
+                        showToast(`❌ 錯誤：系統無此品項 ID`, "error");
                         return; 
                     }
 
@@ -928,20 +940,6 @@
                     }).catch(()=>{});
                 }, () => {});
                 
-                setTimeout(() => {
-                    const video = document.querySelector('#reader video');
-                    if (video && video.srcObject) {
-                        const track = video.srcObject.getVideoTracks()[0];
-                        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
-                        const slider = document.getElementById('zoom-slider');
-                        if (capabilities.zoom) {
-                            slider.min = capabilities.zoom.min || 1; slider.max = capabilities.zoom.max || 5; slider.step = capabilities.zoom.step || 0.1; slider.value = track.getSettings().zoom || 1;
-                            slider.oninput = async function() { try { await track.applyConstraints({ advanced: [{ zoom: parseFloat(this.value) }] }); } catch(e){} };
-                            slider.disabled = false; slider.parentElement.style.opacity = '1';
-                        } else { slider.disabled = true; slider.parentElement.style.opacity = '0.4'; }
-                    }
-                }, 800);
-
             } catch (err) {
                 showToast('鏡頭啟動失敗', 'error'); 
                 document.getElementById('scannerPlaceholder').classList.remove('hidden');
