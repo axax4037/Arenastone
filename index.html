@@ -16,8 +16,10 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        #scannerContainer, #homeScannerContainer { position: relative; width: 100%; border-radius: 12px; overflow: hidden; }
-        #reader, #homeReader { width: 100% !important; border: none !important; }
+        /* 💡 修正：補回固定高度 260px，防止啟動前畫面塌陷消失，同時維持完美方形滿版 */
+        #scannerContainer, #homeScannerContainer { height: 260px; position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #000; }
+        #reader, #homeReader { width: 100% !important; height: 100% !important; border: none !important; }
+        #reader video, #homeReader video { object-fit: cover !important; width: 100% !important; height: 260px !important; }
         
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; animation: fadeInOut 2.5s forwards; font-weight: bold; font-size: 14px; text-align: center; }
@@ -150,7 +152,7 @@
                     <button onclick="setScanMode('outbound')" id="scanOutbound" class="flex-1 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold transition">領用扣帳</button>
                 </div>
                 
-                <div id="scannerContainer" class="border-2 border-slate-800 bg-black flex flex-col justify-center items-center">
+                <div id="scannerContainer" class="border-2 border-slate-800 bg-black flex flex-col justify-center items-center relative">
                     <div id="reader"></div>
                     <div id="scannerPlaceholder" class="p-4 text-center absolute inset-0 flex flex-col items-center justify-center z-10 bg-black">
                         <p class="text-gray-400 text-sm mb-2">點擊下方按鈕啟動全能掃描</p>
@@ -310,7 +312,6 @@
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
-        // 💡 成功嗶聲 (高頻清脆)
         function playBeepSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const oscillator = audioCtx.createOscillator();
@@ -325,7 +326,6 @@
             oscillator.stop(audioCtx.currentTime + 0.1);
         }
 
-        // 💡 失敗警告音 (低頻沉重方波)
         function playErrorSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const oscillator = audioCtx.createOscillator();
@@ -695,7 +695,6 @@
                         
                         showToast(`🎯 掃描成功！庫存已 +1`, "success");
                     } else {
-                        // 💡 發出錯誤提示音
                         playErrorSound();
                         showToast(`❌ 列表無此條碼 ID 庫存建檔`, "error");
                     }
@@ -984,7 +983,6 @@
 
                     const matchedItems = allItems.filter(i => i.id === decodedText);
                     if (scanMode === 'outbound' && matchedItems.length === 0) {
-                        // 💡 發出錯誤提示音
                         playErrorSound();
                         showToast(`❌ 錯誤：系統無此品項 ID`, "error");
                         return; 
