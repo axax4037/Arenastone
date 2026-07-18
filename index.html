@@ -16,9 +16,10 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        #scannerContainer, #homeScannerContainer { max-height: 220px !important; overflow: hidden; position: relative; width: 100%; border-radius: 12px; }
+        /* 擴大鏡頭顯示範圍並移除框線限制，支援無死角 QR 掃描 */
+        #scannerContainer, #homeScannerContainer { max-height: 250px !important; overflow: hidden; position: relative; width: 100%; border-radius: 12px; }
         #reader, #homeReader { width: 100% !important; border: none !important; }
-        #reader video, #homeReader video { object-fit: cover; max-height: 220px !important; width: 100% !important; }
+        #reader video, #homeReader video { object-fit: cover; max-height: 250px !important; width: 100% !important; }
         
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; animation: fadeInOut 2.5s forwards; font-weight: bold; font-size: 14px; text-align: center; }
@@ -230,7 +231,7 @@
                     </div>
                     <div id="manualDetailsContainer">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空自動帶入)</span></label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT)</label>
                             <input type="text" id="manualLot" placeholder="選填" class="w-full px-3 py-2 border rounded-lg uppercase">
                         </div>
                         <div class="mt-3">
@@ -300,7 +301,6 @@
         let CURRENT_USER_NAME = "";
         let lastScanTime = 0, sessionInterval = null; 
         
-        // 紀錄首頁盤點修改過的卡片
         let modifiedScanIndices = new Set();
 
         window.addEventListener('DOMContentLoaded', () => { checkLoginSession(); });
@@ -471,7 +471,7 @@
             const grouped = new Map();
             
             items.forEach(item => {
-                if (parseInt(item.qty) > 0) {
+                if (parseInt(item.qty) >= 0) { // 顯示所有包含0的庫存，以利盤點發現問題
                     if (!grouped.has(item.name)) grouped.set(item.name, new Map());
                     const pNameMap = grouped.get(item.name);
                     const expiryKey = formatToYYYYMMDD(item.expiry);
@@ -493,7 +493,7 @@
             });
 
             if (grouped.size === 0) {
-                container.innerHTML = '<div class="text-center text-gray-500 py-8 font-bold bg-white rounded-lg border shadow-sm">📭 沒有大於零的庫存品項</div>';
+                container.innerHTML = '<div class="text-center text-gray-500 py-8 font-bold bg-white rounded-lg border shadow-sm">📭 沒有庫存品項資料</div>';
                 return;
             }
             
@@ -535,7 +535,6 @@
                                         const cleanLot = cleanLotString(b.lot), cleanExpiry = formatToYYYYMMDD(b.expiry);
                                         const globalIndex = allItems.findIndex(i => i.id === b.id && formatToYYYYMMDD(i.expiry) === cleanExpiry);
                                         
-                                        // 💡 純數字大於等於5碼，或長度大於等於7，視為「有條碼品項」
                                         const isBarcode = /^\\d{5,}$/.test(b.id) || /^[A-Za-z0-9\\-_]{7,}$/.test(b.id);
 
                                         return `
@@ -575,9 +574,6 @@
             container.innerHTML = html;
         }
 
-        // ==========================================
-        // 首頁相機掃描盤點與數量修正
-        // ==========================================
         async function toggleHomeScanner() {
             const panel = document.getElementById('homeScannerPanel');
             const btn = document.getElementById('homeScanTriggerBtn');
@@ -615,8 +611,8 @@
             homeQrCode = new Html5Qrcode('homeReader');
             isHomeScanningActive = true;
             
-            // 💡 解除 formatsToSupport 限制，qrbox 改為 200 正方形，原生支援所有條碼
-            const config = { fps: 15, qrbox: 200 }; 
+            // 💡 移除 qrbox 限制，改用全局解析，原生完美支援所有 QR Code 與條碼
+            const config = { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A ] }; 
             
             try {
                 await homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -666,7 +662,6 @@
             const qtyInput = document.getElementById(`inline-qty-${index}`);
             const decBtn = document.getElementById(`inline-dec-btn-${index}`);
             
-            // 💡 如果是這次盤點流程中「第一次」摸到這個品項，強制歸零開始
             if (!modifiedScanIndices.has(index)) {
                 qtyInput.value = 0;
                 modifiedScanIndices.add(index);
@@ -676,12 +671,12 @@
                 qtyInput.disabled = true; 
                 qtyInput.className = "w-14 text-center border-2 border-amber-500 p-1 rounded font-mono font-bold text-sm bg-amber-100 outline-none";
                 decBtn.classList.remove('hidden'); 
-                document.getElementById(`inline-save-btn-${index}`).classList.add('hidden'); // 掃碼模式隱藏單獨儲存，由下方總按鈕統一存
+                document.getElementById(`inline-save-btn-${index}`).classList.add('hidden'); 
             } else {
                 qtyInput.disabled = false; 
                 qtyInput.className = "w-14 text-center border-2 border-blue-500 p-1 rounded font-mono font-bold text-sm bg-white outline-none";
                 decBtn.classList.add('hidden');
-                document.getElementById(`inline-save-btn-${index}`).classList.remove('hidden'); // 手動模式顯示單獨儲存
+                document.getElementById(`inline-save-btn-${index}`).classList.remove('hidden'); 
             }
             
             document.getElementById(`inline-end-btn-${index}`).classList.remove('hidden');
@@ -695,7 +690,7 @@
             const qtyInput = document.getElementById(`inline-qty-${index}`);
             qtyInput.disabled = true;
             qtyInput.className = "w-14 text-center border-2 border-slate-300 p-1 rounded font-mono font-bold text-sm bg-gray-100 outline-none";
-            qtyInput.value = allItems[index].qty; // 恢復原顯示庫存
+            qtyInput.value = allItems[index].qty; 
             
             document.getElementById(`inline-save-btn-${index}`).classList.add('hidden');
             document.getElementById(`inline-end-btn-${index}`).classList.add('hidden');
@@ -705,7 +700,6 @@
             modifiedScanIndices.delete(index);
         }
 
-        // 💡 盤點差額確認並儲存單筆 (手動模式)
         async function submitCardStocktake(index) {
             const inputField = document.getElementById(`inline-qty-${index}`);
             const newQty = parseInt(inputField.value);
@@ -738,14 +732,13 @@
             } 
         }
 
-        // 💡 盤點差額確認並儲存所有掃碼項目 (POS 機模式)
         async function submitAllHomeScans() {
             if(modifiedScanIndices.size === 0) {
                 showToast("尚未累計任何盤點項目", "error"); return;
             }
             if (!CURRENT_USER_NAME) { showAlert("請先登入操作身分！"); return; }
 
-            let confirmMsg = "【盤點差額確認】\n\n";
+            let confirmMsg = "【掃描盤點差額確認】\n\n";
             for (let idx of modifiedScanIndices) {
                 const item = allItems[idx];
                 const newQty = parseInt(document.getElementById(`inline-qty-${idx}`).value) || 0;
@@ -754,7 +747,7 @@
                 const diffStr = diff > 0 ? `+${diff}` : diff;
                 confirmMsg += `[${item.name}]\n原庫存: ${oldQty} ➔ 實盤: ${newQty} (差額: ${diffStr})\n\n`;
             }
-            confirmMsg += "確定要儲存以上盤點結果嗎？";
+            confirmMsg += "確定要儲存以上結果嗎？";
             
             if (!confirm(confirmMsg)) return;
 
@@ -767,7 +760,7 @@
                 for (let idx of modifiedScanIndices) {
                     const item = allItems[idx];
                     const newQty = document.getElementById(`inline-qty-${idx}`).value;
-                    await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[POS 模式掃描盤點]' });
+                    await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[POS 掃描盤點]' });
                 }
                 showToast("✨ 盤點數量已全部儲存成功！", "success");
                 modifiedScanIndices.clear();
@@ -786,13 +779,10 @@
             const response = await fetch(API_URL, {
                 method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params)
             });
-            if (!response.ok) throw new Error(`通訊代碼異常 (${response.status})`);
+            if (!response.ok) throw new Error(`通訊異常 (${response.status})`);
             return true; 
         }
 
-        // ==========================================
-        // 掃描器與表單邏輯
-        // ==========================================
         async function submitScan() {
             const btn = document.getElementById('scanSubmitBtn');
             const qty = document.getElementById('scanQty').value;
@@ -805,11 +795,7 @@
                 lot = document.getElementById('scanLot').value.trim();
                 expiry = document.getElementById('scanExpiry').value;
                 price = document.getElementById('scanPrice').value;
-                
-                // 💡 批號空白自動帶入效期 (純數字 YYYYMMDD)
-                if (!lot && expiry) {
-                    lot = expiry.replace(/-/g, '');
-                }
+                if (!lot && expiry) lot = expiry.replace(/-/g, '');
             } else {
                 const batchData = JSON.parse(document.getElementById('scanBatchSelect').value);
                 lot = batchData.lot; expiry = batchData.expiry;
@@ -830,7 +816,7 @@
                 await startScanner(); 
             } catch (error) {
                 showAlert('提交失敗：' + error.message);
-            } finally { btn.disabled = false; btn.innerText = "送出作業"; }
+            } finally { btn.disabled = false; btn.innerText = "確認提交"; }
         }
 
         function setScanMode(mode) {
@@ -845,7 +831,6 @@
                 document.getElementById('scanManualDetails').classList.remove('hidden');
                 document.getElementById('scanPriceContainer').classList.remove('hidden');
                 document.getElementById('scanBatchContainer').classList.add('hidden');
-                // 💡 允許編輯品名，因為如果是新品項，他可以自己打字
                 document.getElementById('scanName').readOnly = false;
                 document.getElementById('scanName').classList.remove('bg-gray-100');
             } else {
@@ -890,12 +875,9 @@
             });
         }
 
-        // 💡 修正相機卡死：採用嚴謹的 try-catch 與 async await 確保完全釋放後重啟
         async function startScanner() {
             if (html5QrCode) {
-                try {
-                    if (html5QrCode.isScanning) await html5QrCode.stop();
-                } catch(e) {}
+                try { if (html5QrCode.isScanning) await html5QrCode.stop(); } catch(e) {}
                 try { html5QrCode.clear(); } catch(e) {}
                 html5QrCode = null;
             }
@@ -904,8 +886,8 @@
             html5QrCode = new Html5Qrcode('reader');
             isScanningActive = true;
             
-            // 💡 qrbox 改為 200 正方形，不鎖定 formatsToSupport 以支援全類型 QR/條碼
-            const config = { fps: 15, qrbox: 200 };
+            // 💡 全局解鎖，支援無死角 QR 掃描
+            const config = { fps: 15, formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.UPC_A ] };
 
             try {
                 await html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -920,11 +902,10 @@
                         return; 
                     }
 
-                    // 掃描成功後自動停止相機
                     html5QrCode.stop().then(() => {
                         isScanningActive = false;
                         html5QrCode.clear();
-                        html5QrCode = null; // 徹底釋放
+                        html5QrCode = null; 
 
                         document.getElementById('scannerPlaceholder').classList.remove('hidden');
                         document.getElementById('scannedCode').textContent = decodedText;
@@ -932,7 +913,6 @@
                         document.getElementById('scanForm').classList.remove('hidden');
                         scannedData = decodedText;
 
-                        // 💡 如果資料庫有舊紀錄，自動帶入品名
                         const itemData = matchedItems.length > 0 ? matchedItems[0] : null;
                         document.getElementById('scanName').value = itemData ? itemData.name : '';
 
@@ -948,7 +928,6 @@
                     }).catch(()=>{});
                 }, () => {});
                 
-                // 鏡頭縮放綁定
                 setTimeout(() => {
                     const video = document.querySelector('#reader video');
                     if (video && video.srcObject) {
@@ -1024,11 +1003,7 @@
                 lot = document.getElementById('manualLot').value.trim();
                 expiry = document.getElementById('manualExpiry').value;
                 price = document.getElementById('manualPrice').value;
-                
-                // 💡 批號空白自動帶入效期 (純數字 YYYYMMDD)
-                if (!lot && expiry) {
-                    lot = expiry.replace(/-/g, '');
-                }
+                if (!lot && expiry) lot = expiry.replace(/-/g, '');
             } else {
                 const batchSelect = document.getElementById('manualBatchSelect').value;
                 if(!batchSelect) { showAlert("無可用批次，無法執行作業！"); return; }
@@ -1036,7 +1011,7 @@
                 lot = batchData.lot; expiry = batchData.expiry;
             }
 
-            btn.disabled = true; btn.innerText = "上傳處理中...";
+            btn.disabled = true; btn.innerText = "上傳中...";
             try {
                 await submitData({
                     type: type, id: id, name: name, lot: lot, expiry: expiry,
