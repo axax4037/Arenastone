@@ -16,9 +16,9 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        #scannerContainer, #homeScannerContainer { max-height: 160px !important; overflow: hidden; position: relative; width: 100%; border-radius: 12px; }
+        #scannerContainer, #homeScannerContainer { max-height: 220px !important; overflow: hidden; position: relative; width: 100%; border-radius: 12px; }
         #reader, #homeReader { width: 100% !important; border: none !important; }
-        #reader video, #homeReader video { object-fit: cover; max-height: 160px !important; width: 100% !important; }
+        #reader video, #homeReader video { object-fit: cover; max-height: 220px !important; width: 100% !important; }
         
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; animation: fadeInOut 2.5s forwards; font-weight: bold; font-size: 14px; text-align: center; }
@@ -86,7 +86,6 @@
                 </div>
             </div>
 
-            <!-- 💡 首頁頂部「相機盤點機」模組 -->
             <div class="bg-slate-800 p-3 rounded-xl shadow text-white flex flex-col gap-2">
                 <div class="flex justify-between items-center">
                     <div>
@@ -101,7 +100,6 @@
                     <div id="homeScannerContainer" class="border border-slate-700">
                         <div id="homeReader"></div>
                     </div>
-                    <!-- 💡 新增：下方固定盤點完成工具列 -->
                     <div class="mt-2 flex justify-between items-center bg-gray-800 p-2 rounded-lg border border-gray-700">
                         <div class="text-white text-xs leading-relaxed" id="homeScanStatus">等待掃描...</div>
                         <button onclick="submitAllHomeScans()" id="homeScanSaveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-md transition flex items-center gap-1">
@@ -138,7 +136,6 @@
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
-        <!-- 分頁 2：掃描作業頁面 -->
         <div id="scannerView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>進出庫掃碼作業</h2>
@@ -171,7 +168,7 @@
                     <h3 id="scanFormTitle" class="font-bold text-slate-700 border-b border-blue-200 pb-2 text-sm">填寫表單明細</h3>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">品項名稱</label>
-                        <input type="text" id="scanName" readonly placeholder="系統自動帶入" class="w-full px-3 py-2 border rounded-lg bg-gray-100 font-bold text-slate-700 outline-none text-sm">
+                        <input type="text" id="scanName" placeholder="掃碼自動帶入，新品可手打" class="w-full px-3 py-2 border rounded-lg font-bold text-slate-700 outline-none text-sm bg-white">
                     </div>
                     <div id="scanBatchContainer" class="hidden">
                         <label class="block text-xs font-bold text-blue-600 mb-1">選擇批次</label>
@@ -179,7 +176,7 @@
                     </div>
                     <div id="scanManualDetails">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT)</label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空將自動帶入效期)</span></label>
                             <input type="text" id="scanLot" placeholder="例如：260731" class="w-full px-3 py-2 border rounded-lg bg-white uppercase text-sm">
                         </div>
                         <div class="mt-2">
@@ -201,13 +198,12 @@
                     </div>
                     <div class="flex gap-2">
                         <button onclick="submitScan()" id="scanSubmitBtn" class="w-full py-2 bg-blue-600 text-white rounded-lg font-bold shadow-md text-sm">送出作業</button>
-                        <button onclick="resumeScanner()" class="w-1/3 py-2 bg-gray-500 text-white rounded-lg font-bold text-sm">放棄重掃</button>
+                        <button onclick="resumeScanner()" class="w-1/3 py-2 bg-gray-500 text-white rounded-lg font-bold text-sm">重新掃描</button>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- 手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>無條碼手動入庫/領用</h2>
@@ -234,7 +230,7 @@
                     </div>
                     <div id="manualDetailsContainer">
                         <div>
-                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT)</label>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">批號 (LOT) <span class="text-amber-600 font-normal">(留空自動帶入)</span></label>
                             <input type="text" id="manualLot" placeholder="選填" class="w-full px-3 py-2 border rounded-lg uppercase">
                         </div>
                         <div class="mt-3">
@@ -259,7 +255,6 @@
             </div>
         </div>
 
-        <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態耗材分析</h2>
@@ -291,8 +286,10 @@
 
     <div id="alertModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50">
         <div class="bg-white rounded-lg p-6 max-w-sm mx-4 w-full shadow-2xl">
-            <p id="alertMessage" class="mb-4 font-bold text-gray-700 text-center"></p>
-            <button onclick="closeAlert()" class="w-full py-2 bg-blue-600 text-white rounded-lg font-bold">確定</button>
+            <p id="alertMessage" class="mb-4 font-bold text-gray-700 text-center whitespace-pre-line leading-relaxed"></p>
+            <div id="alertActionBox" class="flex gap-2">
+                <button onclick="closeAlert()" class="w-full py-2 bg-blue-600 text-white rounded-lg font-bold">確定</button>
+            </div>
         </div>
     </div>
 
@@ -303,7 +300,7 @@
         let CURRENT_USER_NAME = "";
         let lastScanTime = 0, sessionInterval = null; 
         
-        // 💡 紀錄已掃描更改的卡片列，供批次上傳使用
+        // 紀錄首頁盤點修改過的卡片
         let modifiedScanIndices = new Set();
 
         window.addEventListener('DOMContentLoaded', () => { checkLoginSession(); });
@@ -482,7 +479,9 @@
                     if (pNameMap.has(expiryKey)) {
                         const existing = pNameMap.get(expiryKey);
                         existing.qty += parseInt(item.qty);
-                        if (item.last_stocktake > existing.last_stocktake) existing.last_stocktake = item.last_stocktake;
+                        if (item.last_stocktake > existing.last_stocktake) {
+                            existing.last_stocktake = item.last_stocktake;
+                        }
                     } else {
                         pNameMap.set(expiryKey, {
                             id: item.id, name: item.name, category: item.category,
@@ -544,11 +543,11 @@
                                                 <div class="flex justify-between items-start text-xs">
                                                     <div>
                                                         <p class="font-mono text-gray-400">ID: ${b.id}</p>
-                                                        <p class="text-slate-700 font-medium">效期: <span class="font-bold text-blue-700">${cleanExpiry}</span> (累計: ${b.qty})</p>
+                                                        <p class="text-slate-700 font-medium">效期: <span class="font-bold text-blue-700">${cleanExpiry}</span> (原庫存: ${b.qty})</p>
                                                     </div>
                                                     <div id="action-trigger-box-${globalIndex}">
                                                         ${isBarcode 
-                                                            ? `<button onclick="showToast('請開啟上方【相機】，對準條碼即可自動累加數量！', 'error')" class="bg-gray-200 text-gray-500 border border-gray-300 px-2 py-1 rounded text-[11px] font-bold"><i class="fas fa-barcode"></i> 條碼保護</button>`
+                                                            ? `<button onclick="showToast('條碼用品請使用上方【相機】直接刷入條碼累計！', 'error')" class="bg-gray-200 text-gray-500 border border-gray-300 px-2 py-1 rounded text-[11px] font-bold"><i class="fas fa-barcode"></i> 限掃碼</button>`
                                                             : `<button onclick="startInlineStocktake(${globalIndex}, false)" class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold"><i class="fas fa-keyboard"></i> 手動輸入</button>`
                                                         }
                                                     </div>
@@ -557,10 +556,11 @@
                                                     <div class="flex items-center gap-1">
                                                         <span class="text-xs font-bold text-slate-500">實盤數:</span>
                                                         <button onclick="decrementInlineQty(${globalIndex})" id="inline-dec-btn-${globalIndex}" class="hidden bg-gray-300 hover:bg-gray-400 text-gray-700 px-2 py-1 rounded font-bold text-xs shadow-sm transition">-1</button>
-                                                        <input type="number" id="inline-qty-${globalIndex}" value="${b.qty}" disabled class="w-14 text-center border-2 border-slate-300 p-1 rounded font-mono font-bold text-sm bg-gray-100 outline-none">
+                                                        <input type="number" id="inline-qty-${globalIndex}" value="0" disabled class="w-14 text-center border-2 border-slate-300 p-1 rounded font-mono font-bold text-sm bg-gray-100 outline-none">
                                                     </div>
                                                     <div class="flex gap-1">
-                                                        <button onclick="endInlineStocktake(${globalIndex})" id="inline-end-btn-${globalIndex}" class="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-bold shadow-sm hidden transition">隱藏</button>
+                                                        <button onclick="submitCardStocktake(${globalIndex})" id="inline-save-btn-${globalIndex}" class="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-xs font-bold shadow-sm hidden transition">單獨儲存</button>
+                                                        <button onclick="endInlineStocktake(${globalIndex})" id="inline-end-btn-${globalIndex}" class="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs font-bold shadow-sm hidden transition">放棄</button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -576,9 +576,9 @@
         }
 
         // ==========================================
-        // 💡 修正 1：相機畫面維持、一鍵批量儲存
+        // 首頁相機掃描盤點與數量修正
         // ==========================================
-        function toggleHomeScanner() {
+        async function toggleHomeScanner() {
             const panel = document.getElementById('homeScannerPanel');
             const btn = document.getElementById('homeScanTriggerBtn');
             
@@ -587,58 +587,65 @@
                 btn.innerHTML = '<i class="fas fa-times"></i> 關閉掃描盤點';
                 document.getElementById('homeScanStatus').innerHTML = '等待掃描...';
                 modifiedScanIndices.clear();
-                startHomeScanner();
+                await startHomeScanner();
             } else {
                 if (modifiedScanIndices.size > 0) {
                     if(!confirm("您有尚未儲存的盤點資料，確定要關閉放棄嗎？")) return;
-                    // 放棄並復原畫面數值
-                    modifiedScanIndices.forEach(idx => {
-                        const qtyInput = document.getElementById(`inline-qty-${idx}`);
-                        if(qtyInput) qtyInput.value = allItems[idx].qty;
-                        endInlineStocktake(idx);
-                    });
+                    modifiedScanIndices.forEach(idx => { endInlineStocktake(idx); });
                     modifiedScanIndices.clear();
                 }
                 panel.classList.add('hidden');
                 btn.innerHTML = '<i class="fas fa-camera"></i> 開啟掃描盤點';
-                if (homeQrCode) { homeQrCode.stop().catch(()=>{}); homeQrCode = null; }
+                
+                if (homeQrCode) {
+                    try { if(homeQrCode.isScanning) await homeQrCode.stop(); } catch(e){}
+                    try { homeQrCode.clear(); } catch(e){}
+                    homeQrCode = null;
+                }
                 isHomeScanningActive = false;
             }
         }
 
-        function startHomeScanner() {
+        async function startHomeScanner() {
+            if (homeQrCode) {
+                try { if (homeQrCode.isScanning) await homeQrCode.stop(); } catch(e){}
+                try { homeQrCode.clear(); } catch(e){}
+                homeQrCode = null;
+            }
             homeQrCode = new Html5Qrcode('homeReader');
             isHomeScanningActive = true;
-            const config = { fps: 20, qrbox: { width: 240, height: 110 } };
             
-            homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
-                if (!isHomeScanningActive) return;
-                const now = Date.now();
-                if (now - lastScanTime < 1000) return; 
-                lastScanTime = now;
+            // 💡 解除 formatsToSupport 限制，qrbox 改為 200 正方形，原生支援所有條碼
+            const config = { fps: 15, qrbox: 200 }; 
+            
+            try {
+                await homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
+                    if (!isHomeScanningActive) return;
+                    const now = Date.now();
+                    if (now - lastScanTime < 1000) return; 
+                    lastScanTime = now;
 
-                const targetRow = document.querySelector(`[data-scan-id="${decodedText}"]`);
-                if (targetRow) {
-                    const globalIdx = parseInt(targetRow.id.replace('inline-row-', ''));
-                    
-                    // 強制啟動高亮盤點
-                    startInlineStocktake(globalIdx, true);
-                    
-                    const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
-                    let currentVal = parseInt(qtyInput.value) || 0;
-                    qtyInput.value = currentVal + 1; 
-                    
-                    // 記錄變更
-                    modifiedScanIndices.add(globalIdx);
-                    const itemName = allItems[globalIdx].name;
-                    document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: ${qtyInput.value}`;
-                    
-                    showToast(`🎯 ${itemName} +1 (總計: ${qtyInput.value})`, "success");
-                    // 💡 注意：此處已移除畫面跳躍 (scrollIntoView)，鏡頭保持不動
-                } else {
-                    showToast(`❌ 列表無此條碼 ID (${decodedText})`, "error");
-                }
-            }, () => {}).catch(err => showToast("相機啟動失敗: " + err));
+                    const targetRow = document.querySelector(`[data-scan-id="${decodedText}"]`);
+                    if (targetRow) {
+                        const globalIdx = parseInt(targetRow.id.replace('inline-row-', ''));
+                        
+                        startInlineStocktake(globalIdx, true);
+                        
+                        const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
+                        let currentVal = parseInt(qtyInput.value) || 0;
+                        qtyInput.value = currentVal + 1; 
+                        
+                        const itemName = allItems[globalIdx].name;
+                        document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: <span class="text-lg font-bold">${qtyInput.value}</span>`;
+                        
+                        showToast(`🎯 掃描成功！庫存已 +1 (目前總計: ${qtyInput.value})`, "success");
+                    } else {
+                        showToast(`❌ 列表無此條碼 ID (${decodedText})`, "error");
+                    }
+                }, () => {});
+            } catch (err) {
+                showToast("相機啟動失敗: " + err, "error");
+            }
         }
 
         function decrementInlineQty(index) {
@@ -647,7 +654,7 @@
             if (currentVal > 0) {
                 qtyInput.value = currentVal - 1;
                 const itemName = allItems[index].name;
-                document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: ${qtyInput.value}`;
+                document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: <span class="text-lg font-bold">${qtyInput.value}</span>`;
                 showToast(`已修正扣除 -1 (總計: ${qtyInput.value})`, "error");
             }
         }
@@ -659,15 +666,22 @@
             const qtyInput = document.getElementById(`inline-qty-${index}`);
             const decBtn = document.getElementById(`inline-dec-btn-${index}`);
             
+            // 💡 如果是這次盤點流程中「第一次」摸到這個品項，強制歸零開始
+            if (!modifiedScanIndices.has(index)) {
+                qtyInput.value = 0;
+                modifiedScanIndices.add(index);
+            }
+            
             if (isBarcodeScan) {
                 qtyInput.disabled = true; 
                 qtyInput.className = "w-14 text-center border-2 border-amber-500 p-1 rounded font-mono font-bold text-sm bg-amber-100 outline-none";
                 decBtn.classList.remove('hidden'); 
+                document.getElementById(`inline-save-btn-${index}`).classList.add('hidden'); // 掃碼模式隱藏單獨儲存，由下方總按鈕統一存
             } else {
                 qtyInput.disabled = false; 
                 qtyInput.className = "w-14 text-center border-2 border-blue-500 p-1 rounded font-mono font-bold text-sm bg-white outline-none";
                 decBtn.classList.add('hidden');
-                modifiedScanIndices.add(index); // 手動打字也要記錄
+                document.getElementById(`inline-save-btn-${index}`).classList.remove('hidden'); // 手動模式顯示單獨儲存
             }
             
             document.getElementById(`inline-end-btn-${index}`).classList.remove('hidden');
@@ -681,24 +695,68 @@
             const qtyInput = document.getElementById(`inline-qty-${index}`);
             qtyInput.disabled = true;
             qtyInput.className = "w-14 text-center border-2 border-slate-300 p-1 rounded font-mono font-bold text-sm bg-gray-100 outline-none";
+            qtyInput.value = allItems[index].qty; // 恢復原顯示庫存
             
+            document.getElementById(`inline-save-btn-${index}`).classList.add('hidden');
             document.getElementById(`inline-end-btn-${index}`).classList.add('hidden');
             document.getElementById(`inline-dec-btn-${index}`).classList.add('hidden');
             document.getElementById(`action-trigger-box-${index}`).classList.remove('hidden');
             
-            // 點擊隱藏時復原數值，並移出上傳清單
-            if (modifiedScanIndices.has(index)) {
-                qtyInput.value = allItems[index].qty;
-                modifiedScanIndices.delete(index);
-            }
+            modifiedScanIndices.delete(index);
         }
 
-        // 💡 點擊「盤點完成」，一次性寫入所有變更並更新畫面
+        // 💡 盤點差額確認並儲存單筆 (手動模式)
+        async function submitCardStocktake(index) {
+            const inputField = document.getElementById(`inline-qty-${index}`);
+            const newQty = parseInt(inputField.value);
+            
+            if (isNaN(newQty) || newQty < 0) { showAlert("數量不可為空或負數！"); return; }
+            if (!CURRENT_USER_NAME) { showAlert("請先登入操作身分！"); return; }
+
+            const item = allItems[index];
+            const oldQty = parseInt(item.qty) || 0;
+            const diff = newQty - oldQty;
+            const diffStr = diff > 0 ? `+${diff}` : diff;
+            
+            let confirmMsg = `【單筆盤點差額確認】\n\n品名：${item.name}\n原庫存：${oldQty}\n實盤數：${newQty}\n差額：${diffStr}\n\n確定要儲存嗎？`;
+            if (!confirm(confirmMsg)) return;
+
+            const saveBtn = document.getElementById(`inline-save-btn-${index}`);
+            const endBtn = document.getElementById(`inline-end-btn-${index}`);
+            saveBtn.disabled = true; endBtn.disabled = true; inputField.disabled = true;
+            saveBtn.innerText = "上傳中";
+            
+            try {
+                await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: newQty, minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[首頁手動盤點]' });
+                showToast("✨ 盤點數量已更新！", "success");
+                await loadData(); 
+                endInlineStocktake(index);
+            } catch (error) { 
+                showAlert('上傳失敗: ' + error.message); 
+                saveBtn.disabled = false; endBtn.disabled = false; inputField.disabled = false;
+                saveBtn.innerText = "儲存";
+            } 
+        }
+
+        // 💡 盤點差額確認並儲存所有掃碼項目 (POS 機模式)
         async function submitAllHomeScans() {
             if(modifiedScanIndices.size === 0) {
                 showToast("尚未累計任何盤點項目", "error"); return;
             }
             if (!CURRENT_USER_NAME) { showAlert("請先登入操作身分！"); return; }
+
+            let confirmMsg = "【盤點差額確認】\n\n";
+            for (let idx of modifiedScanIndices) {
+                const item = allItems[idx];
+                const newQty = parseInt(document.getElementById(`inline-qty-${idx}`).value) || 0;
+                const oldQty = parseInt(item.qty) || 0;
+                const diff = newQty - oldQty;
+                const diffStr = diff > 0 ? `+${diff}` : diff;
+                confirmMsg += `[${item.name}]\n原庫存: ${oldQty} ➔ 實盤: ${newQty} (差額: ${diffStr})\n\n`;
+            }
+            confirmMsg += "確定要儲存以上盤點結果嗎？";
+            
+            if (!confirm(confirmMsg)) return;
 
             const btn = document.getElementById('homeScanSaveBtn');
             const originalHtml = btn.innerHTML;
@@ -709,13 +767,12 @@
                 for (let idx of modifiedScanIndices) {
                     const item = allItems[idx];
                     const newQty = document.getElementById(`inline-qty-${idx}`).value;
-                    await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[POS 模式盤點]' });
+                    await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[POS 模式掃描盤點]' });
                 }
                 showToast("✨ 盤點數量已全部儲存成功！", "success");
                 modifiedScanIndices.clear();
                 document.getElementById('homeScanStatus').innerHTML = "上傳完成，可繼續掃描或關閉。";
                 
-                // 強制重新抓取資料渲染畫面
                 await loadData(); 
             } catch(error) {
                 showAlert('部分上傳失敗: ' + error.message);
@@ -734,7 +791,7 @@
         }
 
         // ==========================================
-        // 其餘表單邏輯
+        // 掃描器與表單邏輯
         // ==========================================
         async function submitScan() {
             const btn = document.getElementById('scanSubmitBtn');
@@ -748,6 +805,11 @@
                 lot = document.getElementById('scanLot').value.trim();
                 expiry = document.getElementById('scanExpiry').value;
                 price = document.getElementById('scanPrice').value;
+                
+                // 💡 批號空白自動帶入效期 (純數字 YYYYMMDD)
+                if (!lot && expiry) {
+                    lot = expiry.replace(/-/g, '');
+                }
             } else {
                 const batchData = JSON.parse(document.getElementById('scanBatchSelect').value);
                 lot = batchData.lot; expiry = batchData.expiry;
@@ -765,10 +827,10 @@
                 document.getElementById('scanResult').classList.add('hidden');
                 document.getElementById('scanNote').value = '';
                 await loadData();
-                startScanner(); 
+                await startScanner(); 
             } catch (error) {
                 showAlert('提交失敗：' + error.message);
-            } finally { btn.disabled = false; btn.innerText = "確認提交"; }
+            } finally { btn.disabled = false; btn.innerText = "送出作業"; }
         }
 
         function setScanMode(mode) {
@@ -783,6 +845,7 @@
                 document.getElementById('scanManualDetails').classList.remove('hidden');
                 document.getElementById('scanPriceContainer').classList.remove('hidden');
                 document.getElementById('scanBatchContainer').classList.add('hidden');
+                // 💡 允許編輯品名，因為如果是新品項，他可以自己打字
                 document.getElementById('scanName').readOnly = false;
                 document.getElementById('scanName').classList.remove('bg-gray-100');
             } else {
@@ -827,47 +890,65 @@
             });
         }
 
-        function startScanner() {
-            if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; }
+        // 💡 修正相機卡死：採用嚴謹的 try-catch 與 async await 確保完全釋放後重啟
+        async function startScanner() {
+            if (html5QrCode) {
+                try {
+                    if (html5QrCode.isScanning) await html5QrCode.stop();
+                } catch(e) {}
+                try { html5QrCode.clear(); } catch(e) {}
+                html5QrCode = null;
+            }
+            
             document.getElementById('scannerPlaceholder').classList.add('hidden');
             html5QrCode = new Html5Qrcode('reader');
             isScanningActive = true;
-            const config = { fps: 15, qrbox: { width: 250, height: 110 } };
+            
+            // 💡 qrbox 改為 200 正方形，不鎖定 formatsToSupport 以支援全類型 QR/條碼
+            const config = { fps: 15, qrbox: 200 };
 
-            html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
-                if (!isScanningActive) return; 
-                const now = Date.now();
-                if (now - lastScanTime < 1500) return; 
-                lastScanTime = now;
+            try {
+                await html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
+                    if (!isScanningActive) return; 
+                    const now = Date.now();
+                    if (now - lastScanTime < 1500) return; 
+                    lastScanTime = now;
 
-                const matchedItems = allItems.filter(i => i.id === decodedText);
-                if (scanMode === 'outbound' && matchedItems.length === 0) {
-                    showToast(`❌ 錯誤：系統無此品項 ID (${decodedText})`, "error");
-                    return; 
-                }
-
-                html5QrCode.stop().then(() => {
-                    isScanningActive = false;
-                    document.getElementById('scannerPlaceholder').classList.remove('hidden');
-                    document.getElementById('scannedCode').textContent = decodedText;
-                    document.getElementById('scanResult').classList.remove('hidden');
-                    document.getElementById('scanForm').classList.remove('hidden');
-                    scannedData = decodedText;
-
-                    const itemData = matchedItems.length > 0 ? matchedItems[0] : null;
-                    document.getElementById('scanName').value = itemData ? itemData.name : '';
-
-                    if (scanMode === 'inbound') {
-                        document.getElementById('scanPrice').value = itemData ? itemData.price : '';
-                        document.getElementById('scanLot').value = '';
-                        document.getElementById('scanExpiry').value = '';
-                        document.getElementById('scanQty').value = '';
-                    } else {
-                        populateBatchSelect(decodedText, 'scanBatchSelect', scanMode);
-                        document.getElementById('scanQty').value = '';
+                    const matchedItems = allItems.filter(i => i.id === decodedText);
+                    if (scanMode === 'outbound' && matchedItems.length === 0) {
+                        showToast(`❌ 錯誤：系統無此品項 ID (${decodedText})`, "error");
+                        return; 
                     }
-                }).catch(()=>{});
-            }, () => {}).then(() => {
+
+                    // 掃描成功後自動停止相機
+                    html5QrCode.stop().then(() => {
+                        isScanningActive = false;
+                        html5QrCode.clear();
+                        html5QrCode = null; // 徹底釋放
+
+                        document.getElementById('scannerPlaceholder').classList.remove('hidden');
+                        document.getElementById('scannedCode').textContent = decodedText;
+                        document.getElementById('scanResult').classList.remove('hidden');
+                        document.getElementById('scanForm').classList.remove('hidden');
+                        scannedData = decodedText;
+
+                        // 💡 如果資料庫有舊紀錄，自動帶入品名
+                        const itemData = matchedItems.length > 0 ? matchedItems[0] : null;
+                        document.getElementById('scanName').value = itemData ? itemData.name : '';
+
+                        if (scanMode === 'inbound') {
+                            document.getElementById('scanPrice').value = itemData ? itemData.price : '';
+                            document.getElementById('scanLot').value = '';
+                            document.getElementById('scanExpiry').value = '';
+                            document.getElementById('scanQty').value = '';
+                        } else {
+                            populateBatchSelect(decodedText, 'scanBatchSelect', scanMode);
+                            document.getElementById('scanQty').value = '';
+                        }
+                    }).catch(()=>{});
+                }, () => {});
+                
+                // 鏡頭縮放綁定
                 setTimeout(() => {
                     const video = document.querySelector('#reader video');
                     if (video && video.srcObject) {
@@ -881,13 +962,17 @@
                         } else { slider.disabled = true; slider.parentElement.style.opacity = '0.4'; }
                     }
                 }, 800);
-            }).catch(err => { showToast('鏡頭啟動失敗', 'error'); document.getElementById('scannerPlaceholder').classList.remove('hidden'); });
+
+            } catch (err) {
+                showToast('鏡頭啟動失敗', 'error'); 
+                document.getElementById('scannerPlaceholder').classList.remove('hidden');
+            }
         }
 
-        function resumeScanner() {
+        async function resumeScanner() {
             document.getElementById('scanForm').classList.add('hidden');
             document.getElementById('scanResult').classList.add('hidden');
-            startScanner();
+            await startScanner();
         }
 
         function toggleManualMode() {
@@ -939,6 +1024,11 @@
                 lot = document.getElementById('manualLot').value.trim();
                 expiry = document.getElementById('manualExpiry').value;
                 price = document.getElementById('manualPrice').value;
+                
+                // 💡 批號空白自動帶入效期 (純數字 YYYYMMDD)
+                if (!lot && expiry) {
+                    lot = expiry.replace(/-/g, '');
+                }
             } else {
                 const batchSelect = document.getElementById('manualBatchSelect').value;
                 if(!batchSelect) { showAlert("無可用批次，無法執行作業！"); return; }
@@ -963,8 +1053,16 @@
             } finally { btn.disabled = false; btn.innerText = "送出作業"; }
         }
 
-        function switchTab(tab) {
-            if (homeQrCode) { toggleHomeScanner(); }
+        async function switchTab(tab) {
+            if (homeQrCode) { await toggleHomeScanner(); }
+            if (html5QrCode) {
+                try { if (html5QrCode.isScanning) await html5QrCode.stop(); } catch(e){}
+                try { html5QrCode.clear(); } catch(e){}
+                html5QrCode = null;
+                document.getElementById('scannerPlaceholder').classList.remove('hidden');
+                document.getElementById('scanForm').classList.add('hidden');
+            }
+            
             document.querySelectorAll('#mainContent > div').forEach(div => div.classList.add('hidden'));
             document.getElementById(tab + 'View').classList.remove('hidden');
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
