@@ -16,14 +16,9 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        /* 💡 修正：強制讓整個相機畫面高度固定為 220px，且移除掃描遮罩，所見即所掃 */
-        #scannerContainer, #homeScannerContainer { width: 100%; border-radius: 12px; overflow: hidden; height: 220px; position: relative; background: #000; }
-        #reader, #homeReader { width: 100% !important; height: 100% !important; border: none !important; }
-        #reader video, #homeReader video { width: 100% !important; height: 220px !important; object-fit: cover !important; }
-        /* 隱藏 html5-qrcode 預設的掃描框與黑色半透明遮罩 */
-        #reader__dashboard_section_csr, #homeReader__dashboard_section_csr { display: none !important; }
-        #reader__scan_region img, #homeReader__scan_region img { display: none !important; }
-        #reader__scan_region canvas, #homeReader__scan_region canvas { display: none !important; }
+        /* 💡 修正：移除硬性高度裁切，改為自適應，讓正方形的 QR Code 能夠完整呈現與辨識 */
+        #scannerContainer, #homeScannerContainer { position: relative; width: 100%; border-radius: 12px; overflow: hidden; }
+        #reader, #homeReader { width: 100% !important; border: none !important; }
         
         #toast-container { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; animation: fadeInOut 2.5s forwards; font-weight: bold; font-size: 14px; text-align: center; }
@@ -99,7 +94,7 @@
                 <div class="flex justify-between items-center">
                     <div>
                         <span class="text-sm font-bold block"><i class="fas fa-qrcode mr-1 text-amber-400"></i> 條碼品項盤點機</span>
-                        <span class="text-[11px] text-slate-400 block mt-0.5">刷條碼自動 +1 累計 (同 POS 機)</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5">支援 QR Code / 網址 / 文字解析</span>
                     </div>
                     <button onclick="toggleHomeScanner()" id="homeScanTriggerBtn" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 shadow-lg">
                         <i class="fas fa-camera"></i> 開啟掃描盤點
@@ -110,6 +105,7 @@
                         <div id="homeReader"></div>
                     </div>
                     <div class="mt-2 flex justify-between items-center bg-gray-800 p-2 rounded-lg border border-gray-700">
+                        <!-- 💡 確保長網址或文字可以自動換行 break-all -->
                         <div class="text-white text-xs leading-relaxed break-all pr-2" id="homeScanStatus">等待掃描...</div>
                         <button onclick="submitAllHomeScans()" id="homeScanSaveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-md transition flex items-center gap-1 shrink-0">
                             <i class="fas fa-check-circle"></i> 盤點完成
@@ -156,7 +152,7 @@
                 
                 <div id="scannerContainer" class="border-2 border-slate-800 bg-black flex flex-col justify-center items-center">
                     <div id="reader"></div>
-                    <div id="scannerPlaceholder" class="p-4 text-center absolute inset-0 flex flex-col items-center justify-center z-10 bg-black">
+                    <div id="scannerPlaceholder" class="p-4 text-center">
                         <p class="text-gray-400 text-sm mb-2">點擊下方按鈕啟動全能掃描</p>
                         <button onclick="startScanner()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-lg text-sm">
                             <i class="fas fa-camera mr-2"></i> 啟動相機
@@ -171,6 +167,7 @@
                 </div>
 
                 <div id="scanResult" class="mt-2 hidden text-center border-b pb-1">
+                    <!-- 💡 確保長網址或文字可以換行 -->
                     <p class="text-green-600 font-bold text-sm break-all">✅ 條碼鎖定：<span id="scannedCode" class="font-mono text-slate-800"></span></p>
                 </div>
                 
@@ -313,7 +310,7 @@
         let lastScanTime = 0, sessionInterval = null; 
         
         let modifiedScanIndices = new Set();
-        
+
         // 💡 建立 Web Audio API 嗶聲合成器
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playBeepSound() {
@@ -606,9 +603,9 @@
             const btn = document.getElementById('homeScanTriggerBtn');
             
             if (panel.classList.contains('hidden')) {
-                // 確保啟動聲音引擎（需使用者交互）
+                // 💡 確保啟動聲音引擎（需使用者交互）
                 if (audioCtx.state === 'suspended') audioCtx.resume();
-                
+
                 panel.classList.remove('hidden');
                 btn.innerHTML = '<i class="fas fa-times"></i> 關閉掃描盤點';
                 document.getElementById('homeScanStatus').innerHTML = '等待掃描...';
@@ -641,8 +638,7 @@
             homeQrCode = new Html5Qrcode('homeReader');
             isHomeScanningActive = true;
             
-            // 💡 移除特定 formats，全面開放解析支援
-            const config = { fps: 15 }; 
+            const config = { fps: 15, qrbox: { width: 220, height: 220 } }; 
             
             try {
                 await homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -650,6 +646,9 @@
                     const now = Date.now();
                     if (now - lastScanTime < 1000) return; 
                     lastScanTime = now;
+
+                    // 💡 發出成功提示音
+                    playBeepSound();
 
                     let globalIdx = -1;
                     for (let i = 0; i < allItems.length; i++) {
@@ -660,9 +659,6 @@
                     }
 
                     if (globalIdx !== -1) {
-                        // 💡 發出成功提示音
-                        playBeepSound();
-                        
                         startInlineStocktake(globalIdx, true);
                         
                         const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
@@ -927,8 +923,7 @@
             html5QrCode = new Html5Qrcode('reader');
             isScanningActive = true;
             
-            // 💡 全局解鎖，無死角解析
-            const config = { fps: 15 };
+            const config = { fps: 15, qrbox: { width: 220, height: 220 } };
 
             try {
                 await html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -943,7 +938,7 @@
                         return; 
                     }
 
-                    // 💡 發出成功嗶聲
+                    // 💡 發出成功提示音
                     playBeepSound();
 
                     html5QrCode.stop().then(() => {
