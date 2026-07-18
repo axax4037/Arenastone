@@ -60,6 +60,7 @@
             <div class="flex items-center gap-2">
                 <span id="currentUserTag" class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold">👤 未登入</span>
                 <span id="loading-tag" class="text-gray-400 text-sm hidden animate-pulse">連線中...</span>
+                <button onclick="handleLogout()" class="text-xs text-red-500 font-bold ml-1 hover:underline">登出</button>
             </div>
         </div>
     </header>
@@ -88,10 +89,13 @@
                 </div>
             </div>
 
-            <!-- 首頁頂部直接新增「掃碼快速盤點」操作區 -->
+            <!-- 首頁頂部「條碼掃描自動累計盤點」操作區 -->
             <div class="bg-slate-800 p-3 rounded-xl shadow text-white flex flex-col gap-2">
                 <div class="flex justify-between items-center">
-                    <span class="text-sm font-bold"><i class="fas fa-search-dollar mr-1 text-amber-400"></i> 現場盤點優先作業</span>
+                    <div>
+                        <span class="text-sm font-bold block"><i class="fas fa-qrcode mr-1 text-amber-400"></i> 條碼用品快速盤點</span>
+                        <span class="text-[11px] text-slate-400 block mt-0.5">刷入條碼數量自動 +1 累計，免手動輸入</span>
+                    </div>
                     <button onclick="toggleHomeScanner()" id="homeScanTriggerBtn" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1">
                         <i class="fas fa-camera"></i> 開啟快速掃描盤點
                     </button>
@@ -199,26 +203,26 @@
             </div>
         </div>
 
-        <!-- 手動作業頁面 -->
+        <!-- 手動作業頁面 (沒條碼才用手動) -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>手動入庫/領用辦理</h2>
+                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>無條碼物品手動登記辦理</h2>
                 <div class="space-y-3">
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">作業類型</label>
                         <select id="manualType" onchange="toggleManualMode()" class="w-full px-3 py-2 border rounded-lg font-bold">
-                            <option value="入庫">入庫</option>
-                            <option value="領用">領用</option>
+                            <option value="入庫">手動入庫</option>
+                            <option value="領用">手動領用</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-500 mb-1">品項 ID / 條碼 *</label>
-                        <input type="text" id="manualId" placeholder="請輸入 ID" class="w-full px-3 py-2 border rounded-lg font-mono font-bold" list="existing-ids-list" oninput="autoFillManual()">
+                        <label class="block text-xs font-bold text-slate-500 mb-1">品項 ID / 代碼 *</label>
+                        <input type="text" id="manualId" placeholder="請輸入自訂 ID" class="w-full px-3 py-2 border rounded-lg font-mono font-bold" list="existing-ids-list" oninput="autoFillManual()">
                         <datalist id="existing-ids-list"></datalist>
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-500 mb-1">品項名稱</label>
-                        <input type="text" id="manualName" placeholder="輸入 ID 後系統自動帶出" class="w-full px-3 py-2 border rounded-lg bg-gray-50">
+                        <input type="text" id="manualName" placeholder="輸入後系統自動對應" class="w-full px-3 py-2 border rounded-lg bg-gray-50">
                     </div>
                     <div id="manualBatchContainer" class="hidden">
                         <label class="block text-xs font-bold text-blue-600 mb-1">選擇指定批次 *</label>
@@ -254,7 +258,7 @@
         <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
-                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態 analysis耗材分析</h2>
+                <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態耗材分析</h2>
                 <div id="reportContent" class="space-y-3"></div>
             </div>
         </div>
@@ -264,19 +268,19 @@
         <div class="max-w-6xl mx-auto flex justify-around py-2">
             <button onclick="switchTab('dashboard')" class="nav-item active flex flex-col items-center py-2 px-4">
                 <i class="fas fa-home text-xl mb-1"></i>
-                <span class="text-xs">首頁</span>
+                <span class="text-xs">首頁總覽</span>
             </button>
             <button onclick="switchTab('scanner')" class="nav-item flex flex-col items-center py-2 px-4">
                 <i class="fas fa-barcode text-xl mb-1"></i>
-                <span class="text-xs">掃碼</span>
+                <span class="text-xs">掃碼進出</span>
             </button>
             <button onclick="switchTab('manual')" class="nav-item flex flex-col items-center py-2 px-4">
                 <i class="fas fa-edit text-xl mb-1"></i>
-                <span class="text-xs">手動作業</span>
+                <span class="text-xs">無碼登記</span>
             </button>
             <button onclick="switchTab('report')" class="nav-item flex flex-col items-center py-2 px-4">
                 <i class="fas fa-chart-bar text-xl mb-1"></i>
-                <span class="text-xs">報表</span>
+                <span class="text-xs">報表預警</span>
             </button>
         </div>
     </nav>
@@ -293,6 +297,73 @@
         let allItems = [], filteredItems = [], scanMode = 'inbound', scannedData = null, html5QrCode = null, homeQrCode = null, isScanningActive = false, isHomeScanningActive = false;
         let CURRENT_USER_NAME = "";
         let lastScanTime = 0; 
+        
+        // 💡 追蹤首頁當前正在「手動實盤」或累計的對象
+        let homeActiveStocktakeIndex = null;
+
+        // ==========================================
+        // 💡 修正 3：生命週期啟動，智慧判定 30 分鐘登入保持
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            checkLoginSession();
+        });
+
+        function checkLoginSession() {
+            const sessionStr = localStorage.getItem('SHANSHI_SESSION');
+            if (sessionStr) {
+                try {
+                    const session = JSON.parse(sessionStr);
+                    const now = Date.now();
+                    // 檢查是否在 30 分鐘 (1800000 毫秒) 期限內
+                    if (now - session.timestamp < 1800000) {
+                        CURRENT_USER_NAME = session.name;
+                        document.getElementById('currentUserTag').innerText = `👤 ${session.name}`;
+                        document.getElementById('loginPortal').classList.add('hidden');
+                        loadData(); 
+                        return;
+                    }
+                } catch(e) {}
+            }
+            // 逾期或無憑證，清除並顯示登入視窗
+            handleLogout();
+        }
+
+        async function handlePortalLogin() {
+            const acc = document.getElementById('loginAccount').value.trim();
+            const pwd = document.getElementById('loginPassword').value.trim();
+            const btn = document.getElementById('loginBtn');
+            if(!acc || !pwd) { showAlert("請輸入代號與密碼！"); return; }
+            
+            btn.disabled = true; btn.innerText = "連線驗證中...";
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify({ action: 'login', account: acc, password: pwd })
+                });
+                const res = JSON.parse(await response.text());
+                if(res.success) {
+                    CURRENT_USER_NAME = res.name;
+                    document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
+                    document.getElementById('loginPortal').classList.add('hidden');
+                    
+                    // 💡 儲存包含時間戳記的登入憑證
+                    localStorage.setItem('SHANSHI_SESSION', JSON.stringify({
+                        name: res.name,
+                        timestamp: Date.now()
+                    }));
+
+                    loadData(); 
+                } else { showAlert("⚠️ 登入失敗: " + res.error); }
+            } catch(e) { showAlert("🚨 系統登入異常：\n" + e.message); } 
+            finally { btn.disabled = false; btn.innerText = "驗證身分並登入"; }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('SHANSHI_SESSION');
+            CURRENT_USER_NAME = "";
+            document.getElementById('currentUserTag').innerText = `👤 未登入`;
+            document.getElementById('loginPortal').classList.remove('hidden');
+        }
 
         function showToast(message, type = 'error') {
             const container = document.getElementById('toast-container');
@@ -314,29 +385,6 @@
         function closeAlert() {
             const modal = document.getElementById('alertModal');
             if(modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
-        }
-
-        async function handlePortalLogin() {
-            const acc = document.getElementById('loginAccount').value.trim();
-            const pwd = document.getElementById('loginPassword').value.trim();
-            const btn = document.getElementById('loginBtn');
-            if(!acc || !pwd) { showAlert("請輸入代號與密碼！"); return; }
-            
-            btn.disabled = true; btn.innerText = "連線驗證中...";
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: 'login', account: acc, password: pwd })
-                });
-                const res = JSON.parse(await response.text());
-                if(res.success) {
-                    CURRENT_USER_NAME = res.name;
-                    document.getElementById('currentUserTag').innerText = `👤 ${res.name}`;
-                    document.getElementById('loginPortal').classList.add('hidden');
-                    loadData(); 
-                } else { showAlert("⚠️ 登入失敗: " + res.error); }
-            } catch(e) { showAlert("🚨 系統登入異常：\n" + e.message); } 
-            finally { btn.disabled = false; btn.innerText = "驗證身分並登入"; }
         }
 
         function formatToYYYYMMDD(dateStr) {
@@ -367,7 +415,6 @@
             document.getElementById('loading-tag').classList.remove('hidden');
             try {
                 const response = await fetch(API_URL);
-                if (!response.ok) throw new Error("網路連線異常");
                 const data = await response.json();
                 allItems = data.items || [];
                 updateDashboard();
@@ -407,7 +454,6 @@
             items.forEach(item => {
                 if (parseInt(item.qty) > 0) {
                     if (!grouped.has(item.name)) grouped.set(item.name, new Map());
-                    
                     const pNameMap = grouped.get(item.name);
                     const expiryKey = formatToYYYYMMDD(item.expiry);
                     
@@ -469,7 +515,7 @@
                                 <div><div class="text-xs text-gray-500">最後盤點</div><div class="font-mono text-xs text-gray-600">${formatToYYYYMMDDHHMM(latestStocktake)}</div></div>
                             </div>
                             <div class="mt-2 pt-2 border-t">
-                                <p class="text-xs text-slate-400 font-bold mb-1.5">📦 實體合併效期盤點：</p>
+                                <p class="text-xs text-slate-500 font-bold mb-1.5">📦 實體合併效期盤點：</p>
                                 <div class="space-y-2">
                                     ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot), cleanExpiry = formatToYYYYMMDD(b.expiry);
@@ -482,7 +528,8 @@
                                                         <p class="text-slate-700 font-medium">效期: <span class="font-bold text-blue-700">${cleanExpiry}</span> (累計存量: ${b.qty})</p>
                                                     </div>
                                                     <div id="action-trigger-box-${globalIndex}">
-                                                        <button onclick="startInlineStocktake(${globalIndex})" class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold">開始盤點</button>
+                                                        <!-- 💡 修正 2：沒條碼的物品（例如純手動ID項目），才開放手動輸入 -->
+                                                        <button onclick="startInlineStocktake(${globalIndex})" class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded text-[11px] font-bold">開始手動盤點</button>
                                                     </div>
                                                 </div>
                                                 <div id="inline-input-panel-${globalIndex}" class="hidden mt-2 pt-2 border-t border-dashed flex items-center justify-between gap-2">
@@ -507,6 +554,9 @@
             container.innerHTML = html;
         }
 
+        // ==========================================
+        // 💡 修正 1：條碼用品高速掃描盤點 (自動 +1 累計)
+        // ==========================================
         function toggleHomeScanner() {
             const panel = document.getElementById('homeScannerPanel');
             const btn = document.getElementById('homeScanTriggerBtn');
@@ -524,30 +574,36 @@
         function startHomeScanner() {
             homeQrCode = new Html5Qrcode('homeReader');
             isHomeScanningActive = true;
-            const config = { fps: 15, qrbox: { width: 240, height: 110 } };
+            const config = { fps: 20, qrbox: { width: 240, height: 110 } };
             
             homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
                 if (!isHomeScanningActive) return;
                 
                 const now = Date.now();
-                if (now - lastScanTime < 1500) return;
+                if (now - lastScanTime < 1000) return; // 1秒條碼冷卻間隔
                 lastScanTime = now;
 
                 const targetRow = document.querySelector(`[data-scan-id="${decodedText}"]`);
                 if (targetRow) {
-                    showToast("🎯 已成功錨定條碼品項！", "success");
-                    const globalIdx = targetRow.id.replace('inline-row-', '');
+                    const globalIdx = parseInt(targetRow.id.replace('inline-row-', ''));
                     
-                    toggleHomeScanner();
+                    // 💡 核心優化：開啟盤點專注面版，數量欄位自動累加 +1
                     startInlineStocktake(globalIdx);
+                    
+                    const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
+                    let currentVal = parseInt(qtyInput.value) || 0;
+                    qtyInput.value = currentVal + 1; // 條碼自動遞增累計
+                    
+                    showToast(`🎯 條碼匹配成功！庫存已累計 +1 (當前實盤: ${qtyInput.value})`, "success");
                     targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
-                    showToast(`❌ 現場列表無此耗材 ID (${decodedText})`, "error");
+                    showToast(`❌ 現場無此條碼 ID (${decodedText}) 耗材建檔！`, "error");
                 }
             }, () => {}).catch(err => showToast("無法啟動首頁相機: " + err));
         }
 
         function startInlineStocktake(index) {
+            homeActiveStocktakeIndex = index;
             document.getElementById(`inline-row-${index}`).className = "p-3 rounded-xl border-2 border-amber-400 bg-amber-50/40 flex flex-col transition-all";
             document.getElementById(`inline-input-panel-${index}`).classList.remove('hidden');
             
@@ -571,6 +627,7 @@
             document.getElementById(`inline-save-btn-${index}`).classList.add('hidden');
             document.getElementById(`inline-end-btn-${index}`).classList.add('hidden');
             document.getElementById(`action-trigger-box-${index}`).classList.remove('hidden');
+            if(homeActiveStocktakeIndex === index) homeActiveStocktakeIndex = null;
         }
 
         async function submitCardStocktake(index) {
@@ -587,8 +644,8 @@
             saveBtn.innerText = "上傳中";
             
             try {
-                await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[首頁卡片智慧盤點]' });
-                showToast("✨ 盤點數量已更新！", "success");
+                await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[智慧高速盤點累計]' });
+                showToast("✨ 盤點數量已上傳更新！", "success");
                 await loadData(); 
                 endInlineStocktake(index);
             } catch (error) { 
@@ -603,7 +660,6 @@
                 method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(params)
             });
             if (!response.ok) throw new Error(`通訊代碼異常 (${response.status})`);
-            const result = await response.text();
             return true; 
         }
 
@@ -665,7 +721,6 @@
             }
         }
 
-        // 💡 修正 1：獨立且正確宣告 updateCategoryFilter，徹底排除定義遺失 Bug
         function updateCategoryFilter() {
             const el = document.getElementById('categoryFilter');
             if (!el) return;
@@ -886,8 +941,6 @@
                 </div>
             `;
         }
-
-        function showSettings() { showAlert("系統已智慧鎖定山石診所專用試算表權限。"); }
     </script>
 </body>
 </html>
