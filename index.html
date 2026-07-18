@@ -16,7 +16,6 @@
         .modal-overlay { background: rgba(0,0,0,0.5); }
         .nav-item.active { color: #3b82f6; }
         
-        /* 💡 修正：移除硬性高度裁切，改為自適應，讓正方形的 QR Code 能夠完整呈現與辨識 */
         #scannerContainer, #homeScannerContainer { position: relative; width: 100%; border-radius: 12px; overflow: hidden; }
         #reader, #homeReader { width: 100% !important; border: none !important; }
         
@@ -104,8 +103,15 @@
                     <div id="homeScannerContainer" class="border border-slate-700 bg-black">
                         <div id="homeReader"></div>
                     </div>
+                    
+                    <!-- 💡 首頁新增：鏡頭縮放拉桿 -->
+                    <div class="p-2 bg-slate-900 rounded-lg mt-2 flex items-center gap-3 text-white border border-slate-700">
+                        <i class="fas fa-search-minus text-xs"></i>
+                        <input type="range" id="home-zoom-slider" min="1" max="5" step="0.1" value="1" class="w-full h-1.5 rounded-lg cursor-pointer appearance-none bg-gray-600">
+                        <i class="fas fa-search-plus text-sm"></i>
+                    </div>
+
                     <div class="mt-2 flex justify-between items-center bg-gray-800 p-2 rounded-lg border border-gray-700">
-                        <!-- 💡 確保長網址或文字可以自動換行 break-all -->
                         <div class="text-white text-xs leading-relaxed break-all pr-2" id="homeScanStatus">等待掃描...</div>
                         <button onclick="submitAllHomeScans()" id="homeScanSaveBtn" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg font-bold text-sm shadow-md transition flex items-center gap-1 shrink-0">
                             <i class="fas fa-check-circle"></i> 盤點完成
@@ -167,7 +173,6 @@
                 </div>
 
                 <div id="scanResult" class="mt-2 hidden text-center border-b pb-1">
-                    <!-- 💡 確保長網址或文字可以換行 -->
                     <p class="text-green-600 font-bold text-sm break-all">✅ 條碼鎖定：<span id="scannedCode" class="font-mono text-slate-800"></span></p>
                 </div>
                 
@@ -263,7 +268,6 @@
             </div>
         </div>
 
-        <!-- 報表頁面 -->
         <div id="reportView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-chart-bar mr-2"></i>庫存狀態耗材分析</h2>
@@ -311,16 +315,15 @@
         
         let modifiedScanIndices = new Set();
 
-        // 💡 建立 Web Audio API 嗶聲合成器
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function playBeepSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            oscillator.type = 'sine'; // 正弦波，聲音清脆
-            oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); // 1000Hz 頻率
-            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); // 音量
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); // 快速漸弱，時長 0.1秒
+            oscillator.type = 'sine'; 
+            oscillator.frequency.setValueAtTime(1000, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); 
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1); 
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             oscillator.start();
@@ -453,6 +456,20 @@
             return lotStr.replace(/['"]/g, '').trim(); 
         }
 
+        async function loadDataSilent() {
+            try {
+                const response = await fetch(API_URL);
+                if (response.ok) {
+                    const data = await response.json();
+                    allItems = data.items || [];
+                    updateDashboard();
+                    updateCategoryFilter();
+                    updateManualIdList();
+                    if (!document.getElementById('dashboardView').classList.contains('hidden')) filterItems(); 
+                }
+            } catch(e) {}
+        }
+
         async function loadData() {
             document.getElementById('loading-tag').classList.remove('hidden');
             try {
@@ -558,7 +575,6 @@
                                     ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot), cleanExpiry = formatToYYYYMMDD(b.expiry);
                                         const globalIndex = allItems.findIndex(i => i.id === b.id && formatToYYYYMMDD(i.expiry) === cleanExpiry);
-                                        
                                         const isBarcode = /^\\d{5,}$/.test(b.id) || /^[A-Za-z0-9\\-_]{7,}$/.test(b.id);
 
                                         return `
@@ -603,7 +619,6 @@
             const btn = document.getElementById('homeScanTriggerBtn');
             
             if (panel.classList.contains('hidden')) {
-                // 💡 確保啟動聲音引擎（需使用者交互）
                 if (audioCtx.state === 'suspended') audioCtx.resume();
 
                 panel.classList.remove('hidden');
@@ -629,6 +644,7 @@
             }
         }
 
+        // 💡 修正 1：雙重引擎鏡頭縮放控制 (相容多裝置)
         async function startHomeScanner() {
             if (homeQrCode) {
                 try { if (homeQrCode.isScanning) await homeQrCode.stop(); } catch(e){}
@@ -638,7 +654,7 @@
             homeQrCode = new Html5Qrcode('homeReader');
             isHomeScanningActive = true;
             
-            const config = { fps: 15, qrbox: { width: 220, height: 220 } }; 
+            const config = { fps: 15 }; 
             
             try {
                 await homeQrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -646,9 +662,6 @@
                     const now = Date.now();
                     if (now - lastScanTime < 1000) return; 
                     lastScanTime = now;
-
-                    // 💡 發出成功提示音
-                    playBeepSound();
 
                     let globalIdx = -1;
                     for (let i = 0; i < allItems.length; i++) {
@@ -659,6 +672,7 @@
                     }
 
                     if (globalIdx !== -1) {
+                        playBeepSound();
                         startInlineStocktake(globalIdx, true);
                         
                         const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
@@ -667,12 +681,40 @@
                         
                         const itemName = allItems[globalIdx].name;
                         document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: <span class="text-lg font-bold">${qtyInput.value}</span>`;
-                        
                         showToast(`🎯 掃描成功！庫存已 +1`, "success");
                     } else {
                         showToast(`❌ 列表無此條碼 ID 庫存建檔`, "error");
                     }
                 }, () => {});
+                
+                // 💡 核心縮放控制：等待鏡頭就緒後綁定
+                setTimeout(() => {
+                    const video = document.querySelector('#homeReader video');
+                    if (video && video.srcObject) {
+                        const track = video.srcObject.getVideoTracks()[0];
+                        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+                        const slider = document.getElementById('home-zoom-slider');
+                        
+                        if (capabilities.zoom) {
+                            slider.min = capabilities.zoom.min || 1; 
+                            slider.max = capabilities.zoom.max || 5; 
+                            slider.step = capabilities.zoom.step || 0.1; 
+                            slider.value = track.getSettings().zoom || 1;
+                            
+                            slider.oninput = async function() { 
+                                try { 
+                                    await track.applyConstraints({ advanced: [{ zoom: parseFloat(this.value) }] }); 
+                                } catch(e) {
+                                    try { await homeQrCode.applyVideoConstraints({ advanced: [{ zoom: parseFloat(this.value) }] }); } catch(err){}
+                                } 
+                            };
+                            slider.disabled = false; slider.parentElement.style.opacity = '1';
+                        } else { 
+                            slider.disabled = true; slider.parentElement.style.opacity = '0.4'; 
+                        }
+                    }
+                }, 800);
+
             } catch (err) {
                 showToast("相機啟動失敗: " + err, "error");
             }
@@ -749,21 +791,17 @@
             let confirmMsg = `【單筆盤點差額確認】\n\n品名：${item.name}\n原庫存：${oldQty}\n實盤數：${newQty}\n差額：${diffStr}\n\n確定要儲存嗎？`;
             if (!confirm(confirmMsg)) return;
 
-            const saveBtn = document.getElementById(`inline-save-btn-${index}`);
-            const endBtn = document.getElementById(`inline-end-btn-${index}`);
-            saveBtn.disabled = true; endBtn.disabled = true; inputField.disabled = true;
-            saveBtn.innerText = "上傳中";
+            item.qty = newQty;
+            item.last_stocktake = new Date().toISOString();
             
-            try {
-                await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: newQty, minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[首頁手動盤點]' });
-                showToast("✨ 盤點數量已更新！", "success");
-                await loadData(); 
-                endInlineStocktake(index);
-            } catch (error) { 
-                showAlert('上傳失敗: ' + error.message); 
-                saveBtn.disabled = false; endBtn.disabled = false; inputField.disabled = false;
-                saveBtn.innerText = "單獨儲存";
-            } 
+            showToast("✨ 盤點數量已秒速更新！", "success");
+            endInlineStocktake(index);
+            updateDashboard();
+            renderItems(allItems); 
+            
+            submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: newQty, minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[首頁手動盤點]' })
+            .then(() => loadDataSilent())
+            .catch(error => showAlert('背景上傳失敗: ' + error.message));
         }
 
         async function submitAllHomeScans() {
@@ -786,27 +824,26 @@
             if (!confirm(confirmMsg)) return;
 
             const btn = document.getElementById('homeScanSaveBtn');
-            const originalHtml = btn.innerHTML;
             btn.disabled = true; 
-            btn.innerHTML = '<i class="fas fa-spinner animate-spin"></i> 上傳中...';
             
-            try {
-                for (let idx of modifiedScanIndices) {
-                    const item = allItems[idx];
-                    const newQty = document.getElementById(`inline-qty-${idx}`).value;
-                    await submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: parseInt(newQty), minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[POS 掃描盤點]' });
-                }
-                showToast("✨ 盤點數量已全部儲存成功！", "success");
-                modifiedScanIndices.clear();
-                document.getElementById('homeScanStatus').innerHTML = "上傳完成，可繼續掃描或關閉。";
+            for (let idx of modifiedScanIndices) {
+                const item = allItems[idx];
+                const newQty = parseInt(document.getElementById(`inline-qty-${idx}`).value) || 0;
+                item.qty = newQty;
+                item.last_stocktake = new Date().toISOString();
                 
-                await loadData(); 
-            } catch(error) {
-                showAlert('部分上傳失敗: ' + error.message);
-            } finally {
-                btn.disabled = false; 
-                btn.innerHTML = originalHtml;
+                submitData({ type: '盤點', id: item.id, lot: item.lot, expiry: item.expiry, qty: newQty, minQty: item.min_qty, user: CURRENT_USER_NAME, note: '[POS 掃描盤點]' })
+                .catch(e => console.error('背景寫入錯誤', e));
             }
+            
+            showToast("✨ 盤點數量已全部秒速儲存！", "success");
+            modifiedScanIndices.clear();
+            document.getElementById('homeScanStatus').innerHTML = "上傳完成，可繼續掃描。";
+            btn.disabled = false;
+            
+            updateDashboard();
+            renderItems(allItems);
+            loadDataSilent();
         }
 
         async function submitData(params) {
@@ -835,22 +872,23 @@
                 lot = batchData.lot; expiry = batchData.expiry;
             }
 
-            btn.disabled = true; btn.innerText = "資料上傳中...";
-            try {
-                let apiType = scanMode === 'inbound' ? '入庫' : '領用';
-                await submitData({
-                    type: apiType, id: scannedData, name: name, lot: lot, expiry: expiry, 
-                    qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: document.getElementById('scanNote').value
-                });
-                showToast(`✅ ${apiType}資料傳送完成！`, "success");
-                document.getElementById('scanForm').classList.add('hidden');
-                document.getElementById('scanResult').classList.add('hidden');
-                document.getElementById('scanNote').value = '';
-                await loadData();
-                await startScanner(); 
-            } catch (error) {
-                showAlert('提交失敗：' + error.message);
-            } finally { btn.disabled = false; btn.innerText = "確認提交"; }
+            btn.disabled = true; 
+
+            let apiType = scanMode === 'inbound' ? '入庫' : '領用';
+            submitData({
+                type: apiType, id: scannedData, name: name, lot: lot, expiry: expiry, 
+                qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: document.getElementById('scanNote').value
+            })
+            .then(() => loadDataSilent())
+            .catch(error => showAlert('背景提交異常：' + error.message));
+
+            showToast(`✅ 資料已送出，背景同步中...`, "success");
+            document.getElementById('scanForm').classList.add('hidden');
+            document.getElementById('scanResult').classList.add('hidden');
+            document.getElementById('scanNote').value = '';
+            btn.disabled = false;
+            
+            await startScanner(); 
         }
 
         function setScanMode(mode) {
@@ -909,6 +947,7 @@
             });
         }
 
+        // 💡 修正 1：掃描作業頁面的縮放雙重注入引擎
         async function startScanner() {
             if (html5QrCode) {
                 try { if (html5QrCode.isScanning) await html5QrCode.stop(); } catch(e) {}
@@ -916,14 +955,13 @@
                 html5QrCode = null;
             }
             
-            // 💡 確保啟動聲音引擎
             if (audioCtx.state === 'suspended') audioCtx.resume();
 
             document.getElementById('scannerPlaceholder').classList.add('hidden');
             html5QrCode = new Html5Qrcode('reader');
             isScanningActive = true;
             
-            const config = { fps: 15, qrbox: { width: 220, height: 220 } };
+            const config = { fps: 15 };
 
             try {
                 await html5QrCode.start({ facingMode: 'environment' }, config, (decodedText) => {
@@ -938,7 +976,6 @@
                         return; 
                     }
 
-                    // 💡 發出成功提示音
                     playBeepSound();
 
                     html5QrCode.stop().then(() => {
@@ -967,6 +1004,34 @@
                     }).catch(()=>{});
                 }, () => {});
                 
+                // 💡 進出庫鏡頭縮放控制
+                setTimeout(() => {
+                    const video = document.querySelector('#reader video');
+                    if (video && video.srcObject) {
+                        const track = video.srcObject.getVideoTracks()[0];
+                        const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+                        const slider = document.getElementById('zoom-slider');
+                        
+                        if (capabilities.zoom) {
+                            slider.min = capabilities.zoom.min || 1; 
+                            slider.max = capabilities.zoom.max || 5; 
+                            slider.step = capabilities.zoom.step || 0.1; 
+                            slider.value = track.getSettings().zoom || 1;
+                            
+                            slider.oninput = async function() { 
+                                try { 
+                                    await track.applyConstraints({ advanced: [{ zoom: parseFloat(this.value) }] }); 
+                                } catch(e) {
+                                    try { await html5QrCode.applyVideoConstraints({ advanced: [{ zoom: parseFloat(this.value) }] }); } catch(err){}
+                                } 
+                            };
+                            slider.disabled = false; slider.parentElement.style.opacity = '1';
+                        } else { 
+                            slider.disabled = true; slider.parentElement.style.opacity = '0.4'; 
+                        }
+                    }
+                }, 800);
+
             } catch (err) {
                 showToast('鏡頭啟動失敗', 'error'); 
                 document.getElementById('scannerPlaceholder').classList.remove('hidden');
@@ -1036,21 +1101,22 @@
                 lot = batchData.lot; expiry = batchData.expiry;
             }
 
-            btn.disabled = true; btn.innerText = "上傳中...";
-            try {
-                await submitData({
-                    type: type, id: id, name: name, lot: lot, expiry: expiry,
-                    qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: document.getElementById('manualNote').value
-                });
-                showAlert('手動單據提交成功！');
-                document.getElementById('manualId').value = ''; document.getElementById('manualName').value = '';
-                document.getElementById('manualLot').value = ''; document.getElementById('manualExpiry').value = '';
-                document.getElementById('manualQty').value = ''; document.getElementById('manualPrice').value = '';
-                document.getElementById('manualBatchSelect').innerHTML = '';
-                await loadData();
-            } catch (error) {
-                showAlert('提交失敗：' + error.message);
-            } finally { btn.disabled = false; btn.innerText = "送出作業"; }
+            btn.disabled = true; 
+
+            submitData({
+                type: type, id: id, name: name, lot: lot, expiry: expiry,
+                qty: parseInt(qty), price: price ? parseFloat(price) : 0, user: CURRENT_USER_NAME, note: document.getElementById('manualNote').value
+            })
+            .then(() => loadDataSilent())
+            .catch(error => showAlert('背景提交異常：' + error.message));
+
+            showToast('✅ 手動單據已送出，背景同步中...', "success");
+            
+            document.getElementById('manualId').value = ''; document.getElementById('manualName').value = '';
+            document.getElementById('manualLot').value = ''; document.getElementById('manualExpiry').value = '';
+            document.getElementById('manualQty').value = ''; document.getElementById('manualPrice').value = '';
+            document.getElementById('manualBatchSelect').innerHTML = '';
+            btn.disabled = false; 
         }
 
         async function switchTab(tab) {
