@@ -30,7 +30,6 @@
 
     <div id="toast-container"></div>
 
-    <!-- 登入視窗 -->
     <div id="loginPortal" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
             <div class="text-center">
@@ -52,7 +51,6 @@
         </div>
     </div>
 
-    <!-- 頂部導航 -->
     <header class="bg-white shadow-sm sticky top-0 z-40">
         <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
             <h1 class="text-xl font-bold text-gray-800"><i class="fas fa-clinic-medical mr-2"></i>山石診所智慧庫存</h1>
@@ -67,7 +65,6 @@
 
     <main id="mainContent" class="max-w-6xl mx-auto px-4 py-6">
         
-        <!-- 首頁儀表板與總覽 -->
         <div id="dashboardView" class="space-y-6">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-lg shadow">
@@ -88,7 +85,6 @@
                 </div>
             </div>
 
-            <!-- 條碼品項盤點機模組 -->
             <div class="bg-slate-800 p-3 rounded-xl shadow text-white flex flex-col gap-2">
                 <div class="flex justify-between items-center">
                     <div>
@@ -104,7 +100,6 @@
                         <div id="homeReader"></div>
                     </div>
                     
-                    <!-- 💡 首頁新增：鏡頭縮放拉桿 -->
                     <div class="p-2 bg-slate-900 rounded-lg mt-2 flex items-center gap-3 text-white border border-slate-700">
                         <i class="fas fa-search-minus text-xs"></i>
                         <input type="range" id="home-zoom-slider" min="1" max="5" step="0.1" value="1" class="w-full h-1.5 rounded-lg cursor-pointer appearance-none bg-gray-600">
@@ -147,7 +142,6 @@
             <div id="itemsList" class="space-y-4"></div>
         </div>
 
-        <!-- 掃描作業頁面 -->
         <div id="scannerView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-barcode mr-2"></i>進出庫掃碼作業</h2>
@@ -158,7 +152,7 @@
                 
                 <div id="scannerContainer" class="border-2 border-slate-800 bg-black flex flex-col justify-center items-center">
                     <div id="reader"></div>
-                    <div id="scannerPlaceholder" class="p-4 text-center">
+                    <div id="scannerPlaceholder" class="p-4 text-center absolute inset-0 flex flex-col items-center justify-center z-10 bg-black">
                         <p class="text-gray-400 text-sm mb-2">點擊下方按鈕啟動全能掃描</p>
                         <button onclick="startScanner()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-lg text-sm">
                             <i class="fas fa-camera mr-2"></i> 啟動相機
@@ -216,7 +210,6 @@
             </div>
         </div>
 
-        <!-- 手動作業頁面 -->
         <div id="manualView" class="hidden space-y-4">
             <div class="bg-white p-4 rounded-lg shadow">
                 <h2 class="text-lg font-semibold mb-4"><i class="fas fa-edit mr-2"></i>無條碼手動入庫/領用</h2>
@@ -316,6 +309,8 @@
         let modifiedScanIndices = new Set();
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 💡 成功嗶聲 (高頻清脆)
         function playBeepSound() {
             if (audioCtx.state === 'suspended') audioCtx.resume();
             const oscillator = audioCtx.createOscillator();
@@ -328,6 +323,21 @@
             gainNode.connect(audioCtx.destination);
             oscillator.start();
             oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        // 💡 失敗警告音 (低頻沉重方波)
+        function playErrorSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            oscillator.type = 'square'; 
+            oscillator.frequency.setValueAtTime(300, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); 
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2); 
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.2);
         }
 
         window.addEventListener('DOMContentLoaded', () => { checkLoginSession(); });
@@ -575,6 +585,7 @@
                                     ${batches.map((b) => {
                                         const cleanLot = cleanLotString(b.lot), cleanExpiry = formatToYYYYMMDD(b.expiry);
                                         const globalIndex = allItems.findIndex(i => i.id === b.id && formatToYYYYMMDD(i.expiry) === cleanExpiry);
+                                        
                                         const isBarcode = /^\\d{5,}$/.test(b.id) || /^[A-Za-z0-9\\-_]{7,}$/.test(b.id);
 
                                         return `
@@ -644,7 +655,6 @@
             }
         }
 
-        // 💡 修正 1：雙重引擎鏡頭縮放控制 (相容多裝置)
         async function startHomeScanner() {
             if (homeQrCode) {
                 try { if (homeQrCode.isScanning) await homeQrCode.stop(); } catch(e){}
@@ -673,6 +683,7 @@
 
                     if (globalIdx !== -1) {
                         playBeepSound();
+                        
                         startInlineStocktake(globalIdx, true);
                         
                         const qtyInput = document.getElementById(`inline-qty-${globalIdx}`);
@@ -681,13 +692,15 @@
                         
                         const itemName = allItems[globalIdx].name;
                         document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold">${itemName}</span><br>累計實盤: <span class="text-lg font-bold">${qtyInput.value}</span>`;
+                        
                         showToast(`🎯 掃描成功！庫存已 +1`, "success");
                     } else {
+                        // 💡 發出錯誤提示音
+                        playErrorSound();
                         showToast(`❌ 列表無此條碼 ID 庫存建檔`, "error");
                     }
                 }, () => {});
                 
-                // 💡 核心縮放控制：等待鏡頭就緒後綁定
                 setTimeout(() => {
                     const video = document.querySelector('#homeReader video');
                     if (video && video.srcObject) {
@@ -947,7 +960,6 @@
             });
         }
 
-        // 💡 修正 1：掃描作業頁面的縮放雙重注入引擎
         async function startScanner() {
             if (html5QrCode) {
                 try { if (html5QrCode.isScanning) await html5QrCode.stop(); } catch(e) {}
@@ -972,6 +984,8 @@
 
                     const matchedItems = allItems.filter(i => i.id === decodedText);
                     if (scanMode === 'outbound' && matchedItems.length === 0) {
+                        // 💡 發出錯誤提示音
+                        playErrorSound();
                         showToast(`❌ 錯誤：系統無此品項 ID`, "error");
                         return; 
                     }
@@ -1004,7 +1018,6 @@
                     }).catch(()=>{});
                 }, () => {});
                 
-                // 💡 進出庫鏡頭縮放控制
                 setTimeout(() => {
                     const video = document.querySelector('#reader video');
                     if (video && video.srcObject) {
