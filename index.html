@@ -360,8 +360,10 @@
         let hasLiveInventory = false;
         let inventorySyncPromise = null;
         let backgroundSyncTimer = null;
+        let backgroundSyncDueAt = 0;
         let backgroundSyncRunning = false;
         let backgroundSyncPending = false;
+        let inventoryMutationRevision = 0;
         let inventoryCacheSaveTimer = null;
         let qrLibraryPromise = null;
         let syncStateHideTimer = null;
@@ -487,17 +489,21 @@ async function flushBackgroundSync() {
     } finally {
         backgroundSyncRunning = false;
         // 同步進行期間若又有新異動，再補一次 GET；多筆連續操作仍只會合併成必要的最少次數。
-        if (backgroundSyncPending) scheduleBackgroundSync(250);
+        if (backgroundSyncPending) scheduleBackgroundSync(0);
     }
 }
 
-function scheduleBackgroundSync(delay = 800) {
+function scheduleBackgroundSync(delay = 0) {
     backgroundSyncPending = true;
+    const dueAt = Date.now() + Math.max(0, Number(delay) || 0);
+    if (backgroundSyncTimer && backgroundSyncDueAt <= dueAt) return;
     if (backgroundSyncTimer) clearTimeout(backgroundSyncTimer);
+    backgroundSyncDueAt = dueAt;
     backgroundSyncTimer = setTimeout(() => {
         backgroundSyncTimer = null;
+        backgroundSyncDueAt = 0;
         flushBackgroundSync();
-    }, delay);
+    }, Math.max(0, dueAt - Date.now()));
 }
 /* superseded refreshCurrentViews removed in Commercial v4 cleanup */
 
@@ -519,8 +525,11 @@ function mergeUpdatedItems(updatedItems) {
 
 function applyMutationResponse(res) {
     if (!res || res.success !== true) throw new Error(res?.error || res?.message || '後端回傳失敗');
-    if (Array.isArray(res.updatedItems)) mergeUpdatedItems(res.updatedItems);
+    inventoryMutationRevision += 1;
+    if (Array.isArray(res.updatedItems) && res.updatedItems.length) mergeUpdatedItems(res.updatedItems);
     else if (res.updatedItem) mergeUpdatedItems([res.updatedItem]);
+    else refreshCurrentViews();
+    scheduleBackgroundSync(0);
     return res;
 }
 
@@ -669,6 +678,12 @@ async function postApi(payload, options = {}) {
                 scheduleBackgroundSync(80);
             }
         });
+        window.addEventListener('focus', () => {
+            if (CURRENT_USER_NAME && navigator.onLine !== false) scheduleBackgroundSync(0);
+        });
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && CURRENT_USER_NAME && navigator.onLine !== false) scheduleBackgroundSync(0);
+        });
 /* superseded checkLoginSession removed in Commercial v4 cleanup */
 
 
@@ -792,7 +807,12 @@ async function syncInventory({ silentMode = false, showIndicator = false } = {})
     if (showIndicator || !hasLiveInventory) setSyncState('syncing');
 
     inventorySyncPromise = (async () => {
+        const syncRevision = inventoryMutationRevision;
         const data = await fetchInventorySnapshot();
+        if (syncRevision !== inventoryMutationRevision) {
+            scheduleBackgroundSync(0);
+            return data;
+        }
         applyInventoryData(data, silentMode);
         hasLiveInventory = true;
         setSyncState('synced');
