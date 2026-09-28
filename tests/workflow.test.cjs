@@ -30,7 +30,7 @@ const server = http.createServer((req,res) => {
         const context = await browser.newContext({viewport:{width:390,height:844},serviceWorkers:'block'});
         const page = await context.newPage();
         const errors = [], requests = [], committed = new Map();
-        let loseResponse = false, rejectWrite = false, sessionFixture = null;
+        let loseResponse = false, rejectWrite = false, rejectStocktakeConflict = false, sessionFixture = null;
         page.on('pageerror', e => {errors.push(e.message);console.error('PAGE ERROR:',e.message);});
         page.on('dialog', dialog => dialog.accept());
         await context.route('https://**/*', async route => {
@@ -44,6 +44,7 @@ const server = http.createServer((req,res) => {
                 if (data.action === 'logout' || data.action === 'clientLog') return route.fulfill({json:body});
                 requests.push(data);
                 if (rejectWrite) return route.fulfill({status:400,json:{success:false,error:'庫存不足'}});
+                if (rejectStocktakeConflict && data.action === 'stocktakeRecord') return route.fulfill({status:409,json:{success:false,error:'盤點基準已變更，請重新確認現場數量'}});
                 if (!committed.has(data._requestId)) committed.set(data._requestId,{success:true,updatedItems:items});
                 if (loseResponse) return route.abort('failed');
                 body = committed.get(data._requestId);
@@ -203,6 +204,24 @@ const server = http.createServer((req,res) => {
         await page.waitForFunction(() => document.getElementById('stocktakeQty').value === '6');
         assert.equal(await page.inputValue('#stocktakeReason'),'破損');
         assert.equal(await page.inputValue('#stocktakeLineNote'),'重新確認中的草稿');
+
+        // A stocktake 409 is a definite non-commit. Release the journal so the operator can
+        // refresh the baseline and enter a newly confirmed count instead of retrying stale qty.
+        rejectStocktakeConflict = true;
+        const stocktakeConflict = await page.evaluate(async () => {try{await postApi({action:'stocktakeRecord',sessionId:77,batch_id:10,location_id:1,qty:6,reason:'破損'});}catch(e){return e.message;}});
+        assert.match(stocktakeConflict,/盤點基準已變更/);
+        assert.equal(await page.evaluate(() => pendingWrite),null);
+        rejectStocktakeConflict = false;
+
+        // Ordinary drafts also survive a full tab/PWA restart without being submitted.
+        await page.evaluate(async () => {await switchTab('manual');document.getElementById('manualId').value='RESTART-DRAFT';document.getElementById('manualQty').value='3';saveWorkDraft();sessionStorage.clear();});
+        await page.reload();
+        await page.waitForFunction(() => document.getElementById('manualId').value === 'RESTART-DRAFT');
+        assert.equal(await page.inputValue('#manualQty'),'3');
+        assert.equal(requests.filter(x=>x.id==='RESTART-DRAFT').length,0);
+        await page.fill('#manualId','');
+        await page.fill('#manualQty','');
+        await page.evaluate(() => saveWorkDraft());
 
         // Failure to persist the journal must prevent sending, rather than losing its ID.
         const requestsBeforeStorageFailure=requests.length;

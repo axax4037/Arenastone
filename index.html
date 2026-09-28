@@ -615,7 +615,10 @@ async function parseApiJson(response) {
         const error = new Error(data?.error || data?.message || (response.status === 401 ? '登入已失效，請重新登入' : `HTTP ${response.status}`));
         error.status = response.status;
         // Authentication failures do not establish whether a previous attempt committed.
-        error.rejected = data?.success === false && response.status >= 400 && response.status < 500 && ![401,403,408,409,429].includes(response.status);
+        // Backend 409 responses are explicit optimistic-concurrency / validation rejections;
+        // those operations are rolled back or not started, so the user must be allowed to
+        // refresh the new baseline and correct the draft instead of retrying stale payload.
+        error.rejected = data?.success === false && response.status >= 400 && response.status < 500 && ![401,403,408,429].includes(response.status);
         throw error;
     }
     return data;

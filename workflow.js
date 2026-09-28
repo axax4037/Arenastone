@@ -1,4 +1,5 @@
-// Per-tab, per-account drafts. Nothing here is automatically submitted on restore.
+// Per-tab drafts are mirrored to per-account local storage so a closed tab/PWA can be resumed.
+// Nothing here is automatically submitted on restore.
 const WORK_DRAFT_PREFIX = 'SHANSHI_WORK_V1:';
 // Unconfirmed mutation journal must survive a full tab/PWA restart so the same requestId can be retried.
 const PENDING_WRITE_PREFIX = 'SHANSHI_PENDING_WRITE_V1:';
@@ -58,7 +59,9 @@ function removePersistedPendingWrite(write, account = draftAccount) {
 function saveWorkDraft(required = false) {
     if (!draftAccount) { if (required) throw new Error('請重新登入後再送出'); return false; }
     try {
-        sessionStorage.setItem(WORK_DRAFT_PREFIX + draftAccount, JSON.stringify(captureWorkDraft()));
+        const serialized = JSON.stringify(captureWorkDraft());
+        sessionStorage.setItem(WORK_DRAFT_PREFIX + draftAccount, serialized);
+        localStorage.setItem(WORK_DRAFT_PREFIX + draftAccount, serialized);
         if (pendingWrite) persistPendingWrite(pendingWrite);
         draftStorageFailed = false;
         return true;
@@ -74,6 +77,9 @@ function restoreWorkDraft(account) {
     draftAccount = account;
     let draft = null, persistedWrite = null;
     try { draft = JSON.parse(sessionStorage.getItem(WORK_DRAFT_PREFIX + account) || 'null'); } catch {}
+    if (!draft) {
+        try { draft = JSON.parse(localStorage.getItem(WORK_DRAFT_PREFIX + account) || 'null'); } catch {}
+    }
     try {
         const sessionWrite = draft?.pendingWrite?.payload?._requestId ? draft.pendingWrite : null;
         if (sessionWrite) {
@@ -133,7 +139,7 @@ function renderWorkflowNotice() {
     box.classList.toggle('hidden', !pendingWrite && !draftStorageFailed && !hasWorkDraft());
     box.innerHTML = pendingWrite
         ? `上次送出結果尚未確認。請勿重建相同作業；重新確認會沿用同一筆交易。<button onclick="retryPendingWrite()" class="mini-btn primary" ${writeInFlight?'disabled':''}>${writeInFlight?'確認中…':'重新確認結果'}</button>`
-        : draftStorageFailed ? '草稿目前無法保存，請勿關閉或重新整理此分頁。' : '有未完成草稿，已保留在此分頁；重新登入相同帳號後可繼續。';
+        : draftStorageFailed ? '草稿目前無法保存，請勿關閉或重新整理此分頁。' : '有未完成草稿，已安全保存；重新開啟或登入相同帳號後可繼續。';
 }
 
 function rememberInlineQty(index) {
