@@ -59,6 +59,8 @@
     </header>
 
     <main id="mainContent" class="max-w-6xl mx-auto px-4 py-5">
+        <section id="workflowNotice" class="workflow-notice hidden" role="status" aria-live="polite"></section>
+        <section id="updateNotice" class="workflow-notice hidden" role="status">已有新版本。請先完成目前作業。<button onclick="applyWaitingUpdate()" class="mini-btn primary">更新並重新載入</button></section>
         
         <!-- ======================= 1. 首頁總覽 ======================= -->
         <div id="dashboardView" class="space-y-3 animate-fade-in">
@@ -95,6 +97,8 @@
                 </div>
                 <div id="homeScannerPanel" class="hidden bg-black/50 p-2 rounded-lg relative z-10 border border-slate-700/50">
                     <div id="homeScannerContainer" class="border border-slate-700 bg-black rounded shadow-inner"><div id="homeReader"></div></div>
+                    <div id="homeBatchPicker" class="hidden mt-2"><label for="homeBatchSelect">此品項有多個批次，請選擇本次實盤批次</label><select id="homeBatchSelect" class="w-full text-slate-800 p-2 rounded"></select><button onclick="confirmHomeBatch()" class="mini-btn primary">選擇批次並計入 1 件</button></div>
+                    <p class="text-xs mt-2">每件計入後，請移開條碼再掃下一件。實盤草稿會保留。</p>
                     <div class="p-2 bg-slate-900 rounded mt-2 flex items-center gap-2 text-white border border-slate-700">
                         <i class="fas fa-search-minus text-slate-400 text-xs"></i>
                         <input type="range" id="home-zoom-slider" min="1" max="5" step="0.1" value="1" class="w-full h-1.5 rounded cursor-pointer appearance-none bg-slate-700 accent-amber-500">
@@ -138,8 +142,8 @@
                     <button onclick="setScanMode('inbound')" id="scanInbound" class="flex-1 py-2.5 bg-blue-600 text-white rounded-lg font-bold transition shadow-sm text-sm">快速入庫</button>
                     <button onclick="setScanMode('outbound')" id="scanOutbound" class="flex-1 py-2.5 bg-transparent text-gray-500 hover:text-gray-700 rounded-lg font-bold transition text-sm">快速出庫</button>
                 </div>
-                <p id="scanModeHint" class="text-xs text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-2.5 mb-3"><i class="fas fa-bolt mr-1"></i>既有條碼會沿用原資料並立即入庫 +1；新條碼才會開啟建檔表單。目前間隔 0.65 秒。</p>
-                <div class="mb-3"><label class="block text-xs font-bold text-slate-600 mb-1.5 ml-1">作業庫位 <span class="text-red-500">*</span></label><select id="scanLocation" onchange="refreshScannerLocationContext()" class="w-full px-4 py-2.5 border border-blue-200 rounded-xl bg-white font-bold text-slate-700 text-sm"></select><p class="mt-1 text-[10px] text-slate-500">快速入庫會直接增加到此庫位，掃描前請先確認。</p></div>
+                <p id="scanModeHint" class="text-xs text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-2.5 mb-3"><i class="fas fa-bolt mr-1"></i>掃到既有品項會帶入基本資料；核對批號、效期及數量，按確認送出後才入庫。</p>
+                <div class="mb-3"><label class="block text-xs font-bold text-slate-600 mb-1.5 ml-1">作業庫位 <span class="text-red-500">*</span></label><select id="scanLocation" onchange="refreshScannerLocationContext()" class="w-full px-4 py-2.5 border border-blue-200 rounded-xl bg-white font-bold text-slate-700 text-sm"></select><p class="mt-1 text-[10px] text-slate-500">入庫會增加到此庫位，送出前請先確認。</p></div>
                 <div id="scannerContainer" class="border-2 border-slate-800 bg-black flex flex-col justify-center items-center rounded-xl overflow-hidden shadow-inner min-h-[250px]">
                     <div id="reader"></div>
                     <div id="scannerPlaceholder" class="p-6 text-center">
@@ -162,6 +166,7 @@
                 </section>
                 <div id="scanForm" class="hidden mt-4 space-y-4 p-4 bg-blue-50/50 rounded-xl border border-blue-100">
                     <h3 id="scanFormTitle" class="font-bold text-blue-800 border-b border-blue-200 pb-2 text-sm flex items-center gap-2"><i class="fas fa-clipboard-list"></i> 填寫表單明細</h3>
+                    <div id="inboundBatchPicker" class="hidden"><label for="inboundBatchSelect" class="block text-xs font-bold mb-1">帶入既有批次／建立新批次</label><select id="inboundBatchSelect" onchange="selectInboundBatch()" class="w-full p-3 border rounded-xl"></select><p class="text-xs mt-1">已自動帶入基本資料。請核對庫位、批號、效期及數量；新一批貨可修改批號與效期。</p></div>
                     <div><label class="block text-xs font-bold text-slate-600 mb-1.5 ml-1">品項名稱</label><input type="text" id="scanName" class="w-full px-4 py-2.5 border border-gray-300 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-500 text-sm bg-white"></div>
                     <div id="scanBatchContainer" class="hidden space-y-2"><label class="block text-xs font-bold text-blue-600 mb-1.5 ml-1">領用批次</label><label class="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2 text-xs font-bold text-emerald-800"><input type="checkbox" id="scanUseFefo" checked onchange="toggleScannerFefo()"> 自動 FEFO（最早到期優先，可跨批次扣帳）</label><select id="scanBatchSelect" class="w-full px-4 py-2.5 border-2 border-blue-300 rounded-xl bg-white font-bold text-slate-700 text-sm outline-none"></select><div id="scanFefoHint" class="text-[10px] text-emerald-700 bg-emerald-50 rounded p-2">系統會由最早到期且有庫存的批次開始扣帳。</div></div>
                     <div id="scanManualDetails" class="grid grid-cols-2 gap-3">
@@ -393,13 +398,14 @@ function parseContinuousScanDelayClient(value){const raw=String(value??'').trim(
 function formatScanDelay(seconds=continuousScanDelaySeconds){return Number(seconds).toFixed(2).replace(/0+$/,'').replace(/\.$/,'');}
 function continuousScanDelayMs(){return Math.round(continuousScanDelaySeconds*1000);}
 function applyAppSettings(settings){const seconds=parseContinuousScanDelayClient(settings?.continuousScanDelaySeconds);if(seconds!==null)continuousScanDelaySeconds=seconds;const hint=document.getElementById('scanModeHint');if(hint)hint.innerHTML=scanModeHintHtml(scanMode);}
-function scanModeHintHtml(mode){return mode==='inbound'?`<i class="fas fa-bolt mr-1"></i>既有條碼每掃一次先暫存入庫 +1，完成本次作業並確認後才寫入。目前間隔 ${formatScanDelay()} 秒。`:`<i class="fas fa-box-open mr-1"></i>既有條碼每掃一次先暫存出庫 -1，完成本次作業並確認後才依 FEFO 扣帳。目前間隔 ${formatScanDelay()} 秒。`;}
+function scanModeHintHtml(mode){return mode==='inbound'?`<i class="fas fa-bolt mr-1"></i>掃到既有品項會帶入基本資料；核對批號、效期及數量，按確認送出後才入庫。`:`<i class="fas fa-box-open mr-1"></i>既有條碼每掃一次先暫存出庫 -1，完成本次作業並確認後才依 FEFO 扣帳。目前間隔 ${formatScanDelay()} 秒。`;}
 
 function saveInventoryCache() {
     try {
         localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify({
             savedAt: Date.now(),
             items: allItems,
+            locations: allLocations,
             settings: { continuousScanDelaySeconds }
         }));
     } catch (e) {}
@@ -411,7 +417,7 @@ function hydrateInventoryCache() {
         if (!raw) return false;
         const cached = JSON.parse(raw);
         if (!cached || !Array.isArray(cached.items) || cached.items.length === 0) return false;
-        applyInventoryData({ items: cached.items, settings: cached.settings || {} }, false, { persistCache: false });
+        applyInventoryData({ items: cached.items, locations: cached.locations || [], settings: cached.settings || {} }, false, { persistCache: false });
         setSyncState('cached');
         return true;
     } catch (e) {
@@ -448,7 +454,12 @@ async function ensureQrLibraryLoaded() {
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') return;
-    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).catch(() => {});
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(registration => {
+        showWaitingUpdate(registration);
+        registration.addEventListener('updatefound', () => {
+            registration.installing?.addEventListener('statechange', () => showWaitingUpdate(registration));
+        });
+    }).catch(() => {});
 }
 
 function debouncedFilterItems() {
@@ -457,6 +468,7 @@ function debouncedFilterItems() {
 }
 
 async function ensureLiveInventoryReady() {
+    if (!CURRENT_SESSION_TOKEN) { showAlert('請先登入'); return false; }
     if (hasLiveInventory) return true;
     try {
         await syncInventory({ silentMode: false, showIndicator: true });
@@ -600,21 +612,31 @@ async function parseApiJson(response) {
         throw new Error('伺服器回傳格式異常，請重新整理後再試');
     }
     if (!response.ok) {
-        if (response.status === 401) {
-            throw new Error(data?.error || '登入已失效，請重新登入');
-        }
-        throw new Error(data?.error || data?.message || `HTTP ${response.status}`);
+        const error = new Error(data?.error || data?.message || (response.status === 401 ? '登入已失效，請重新登入' : `HTTP ${response.status}`));
+        error.status = response.status;
+        // Authentication failures do not establish whether a previous attempt committed.
+        error.rejected = data?.success === false && response.status >= 400 && response.status < 500 && ![401,403,408,409,429].includes(response.status);
+        throw error;
     }
     return data;
 }
 
 async function postApi(payload, options = {}) {
-    // 同一輪自動重試固定沿用 requestId；Cloudflare D1 版會用 request_results 去重。
-    const requestId = payload?._requestId || createRequestId();
-    const bodyPayload = { ...payload, _requestId: requestId };
     const action = String(payload?.action || '');
     const isPublicAuth = action === 'login' || action === 'loginChallenge';
     if (!isPublicAuth && !CURRENT_SESSION_TOKEN) throw new Error('登入已失效，請重新登入');
+    const tracked = isInventoryWrite(payload);
+    if (tracked && writeInFlight) throw new Error('已有作業正在送出，請稍候');
+    if (tracked && pendingWrite && payload._requestId !== pendingWrite.payload._requestId) throw new Error('上次送出結果尚未確認，請使用上方「重新確認結果」，不要重建作業。');
+    const bodyPayload = tracked && pendingWrite ? pendingWrite.payload : { ...payload, _requestId: payload?._requestId || createRequestId() };
+    const owner = draftAccount;
+    if (tracked) {
+        const previousWrite = pendingWrite;
+        pendingWrite = pendingWrite || {payload: bodyPayload, context: options.draftContext || null};
+        try { saveWorkDraft(true); } catch (error) { pendingWrite = previousWrite; renderWorkflowNotice(); throw error; }
+        writeInFlight = true;
+        renderWorkflowNotice();
+    }
     const retries = Number.isInteger(options.retries)
         ? options.retries
         : (action === 'sendManualReport' ? 1 : API_POST_MAX_RETRIES);
@@ -622,16 +644,33 @@ async function postApi(payload, options = {}) {
     const headers = { 'Content-Type': 'application/json;charset=utf-8' };
     if (!isPublicAuth) headers.Authorization = `Bearer ${CURRENT_SESSION_TOKEN}`;
 
-    const response = await resilientFetch(API_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(bodyPayload),
-        cache: 'no-store'
-    }, { timeoutMs: options.timeoutMs || API_POST_TIMEOUT_MS, retries });
-
-    const res = await parseApiJson(response);
-    if (!res || res.success !== true) throw new Error(res?.error || res?.message || '後端處理失敗');
-    return res;
+    try {
+        const response = await resilientFetch(API_URL, {
+            method: 'POST', headers, body: JSON.stringify(bodyPayload), cache: 'no-store'
+        }, { timeoutMs: options.timeoutMs || API_POST_TIMEOUT_MS, retries });
+        const res = await parseApiJson(response);
+        if (!res || res.success !== true) {
+            const error = new Error(res?.error || res?.message || '後端處理失敗');
+            error.rejected = res?.success === false;
+            throw error;
+        }
+        if (tracked) {
+            if (owner !== draftAccount) throw new Error('登入狀態已變更，請使用原帳號重新確認交易結果');
+            completeDraftWrite(pendingWrite, res);
+            pendingWrite = null;
+            saveWorkDraft();
+        }
+        return res;
+    } catch (error) {
+        if (tracked && owner === draftAccount) {
+            if (error.rejected) pendingWrite = null;
+            saveWorkDraft();
+            if (!error.rejected) throw new Error('送出結果尚未確認，可能已寫入。請使用「重新確認結果」沿用原交易，勿重複建單。\n' + error.message);
+        }
+        throw error;
+    } finally {
+        if (tracked) { writeInFlight = false; renderWorkflowNotice(); }
+    }
 }
 
         function playBeepSound() {
@@ -691,6 +730,7 @@ async function postApi(payload, options = {}) {
             if(sessionInterval) clearInterval(sessionInterval);
             const timerEl = document.getElementById('sessionTimer');
             const parsedExpiry = expiresAt ? Date.parse(expiresAt) : 0;
+            sessionWarningShown = false;
             const deadline = Number.isFinite(parsedExpiry) && parsedExpiry > 0 ? parsedExpiry : startTimestamp + 1800000;
             timerEl.classList.remove('hidden');
             sessionInterval = setInterval(() => {
@@ -698,8 +738,9 @@ async function postApi(payload, options = {}) {
                 if (diff <= 0) {
                     clearInterval(sessionInterval);
                     handleLogout();
-                    showAlert("系統資安保護：登入已逾時，請重新登入！");
+                    showAlert('登入已逾時。已保留草稿，請使用相同帳號重新登入後繼續。');
                 } else {
+                    if (diff <= 120000 && !sessionWarningShown) { sessionWarningShown = true; saveWorkDraft(); showAlert('登入將在 2 分鐘內到期。草稿會保留，請完成目前作業或重新登入。'); }
                     const m = Math.floor(diff / 60000);
                     const s = Math.floor((diff % 60000) / 1000);
                     timerEl.innerText = `⏳ ${m}:${s.toString().padStart(2, '0')}`;
@@ -739,7 +780,7 @@ async function postApi(payload, options = {}) {
 
         function confirmQuickScanBatch(mode, rows, total) {
             if(quickScanConfirmResolver)quickScanConfirmResolver(false);
-            const action=mode==='inbound'?'入庫':'出庫',details=rows.map(x=>`${x.name}｜${x.locationName}：${x.count} 件`).join('\n');
+            const action=mode==='inbound'?'入庫':'出庫',details=rows.map(x=>`${x.name}｜${x.locationName}：${x.count} 件${mode==='inbound'?`｜LOT ${x.lot||'無'}｜效期 ${x.expiry||'未填'}`:''}`).join('\n');
             document.getElementById('quickScanConfirmTitle').textContent=`確認本次${action}`;
             document.getElementById('quickScanConfirmMessage').textContent=`總計：${total} 筆／${total} 件\n\n${details}`;
             document.getElementById('quickScanConfirmHint').textContent=`按「確認${action}」才會${mode==='inbound'?'增加':'扣除'}庫存；取消則完全不異動。`;
@@ -807,8 +848,9 @@ async function syncInventory({ silentMode = false, showIndicator = false } = {})
     if (showIndicator || !hasLiveInventory) setSyncState('syncing');
 
     inventorySyncPromise = (async () => {
-        const syncRevision = inventoryMutationRevision;
+        const syncRevision = inventoryMutationRevision, syncToken = CURRENT_SESSION_TOKEN;
         const data = await fetchInventorySnapshot();
+        if (syncToken !== CURRENT_SESSION_TOKEN) return data;
         if (syncRevision !== inventoryMutationRevision) {
             scheduleBackgroundSync(0);
             return data;
@@ -892,14 +934,11 @@ async function toggleHomeScanner() {
         btn.innerHTML = '<i class="fas fa-times text-sm"></i> <span>關閉掃描</span>';
         btn.className = "bg-slate-700 active:scale-95 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1 shadow-md";
         document.getElementById('homeScanStatus').innerHTML = '<span class="text-slate-400 flex items-center gap-1"><i class="fas fa-spinner fa-pulse"></i> 等待掃描...</span>';
-        modifiedScanIndices.clear();
+        homeScanGate = {code:'',misses:0}; homePendingCode = ''; homeBatchChoices.clear();
+        document.getElementById('homeBatchPicker').classList.add('hidden');
         await startHomeScanner();
     } else {
-        if (modifiedScanIndices.size > 0) {
-            if(!confirm("您有尚未儲存的盤點資料，確定要關閉放棄嗎？")) return;
-            modifiedScanIndices.forEach(idx => { endInlineStocktake(idx); });
-            modifiedScanIndices.clear();
-        }
+        saveWorkDraft(); // 關閉相機不等於丟棄盤點草稿。
         panel.classList.add('hidden');
         btn.innerHTML = '<i class="fas fa-camera text-sm"></i> <span>開啟掃描</span>';
         btn.className = "bg-amber-500 active:scale-95 text-slate-950 px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1 shadow-md";
@@ -919,6 +958,7 @@ async function toggleHomeScanner() {
             let currentVal = parseInt(qtyInput.value) || 0;
             if (currentVal > 0) {
                 qtyInput.value = currentVal - 1;
+                rememberInlineQty(index);
                 document.getElementById('homeScanStatus').innerHTML = `<span class="text-green-400 font-bold truncate block w-40 md:w-auto">${allItems[index].name}</span><span class="text-xs text-slate-300">累計實盤: </span><span class="text-lg font-bold text-white">${qtyInput.value}</span>`;
                 showToast(`已修正扣除 -1`, "error");
             }
@@ -971,6 +1011,8 @@ function updateCategoryFilter() {
         }
 
 async function startScanner() {
+    if (pendingWrite || writeInFlight) { showAlert('請先重新確認上次送出結果'); return; }
+    if (!document.getElementById('scanForm').classList.contains('hidden')) { showAlert('目前有未送出的入庫表單，請先送出，或按「重新掃描」確認放棄。'); return; }
     if (!(await ensureLiveInventoryReady())) return;
     try {
         await ensureQrLibraryLoaded();
@@ -991,7 +1033,7 @@ async function startScanner() {
 
     try {
         await html5QrCode.start({ facingMode: 'environment' }, { fps: 15, aspectRatio: 1.0 }, (decodedText) => {
-            if (!isScanningActive) return;
+            if (!isScanningActive || !CURRENT_SESSION_TOKEN || pendingWrite || writeInFlight) return;
             if (quickScanInProgress) return;
             const now = Date.now();
             if (now - lastScanTime < continuousScanDelayMs()) return;
@@ -1012,12 +1054,13 @@ async function startScanner() {
             document.getElementById('scanResult').classList.remove('hidden');
             scannedData = normalizedCode;
 
-            if (matchedItems.length > 0) {
+            if (matchedItems.length > 0 && scanMode === 'outbound') {
                 document.getElementById('scanForm').classList.add('hidden');
-                if(scanMode==='inbound')quickInboundExisting(normalizedCode, matchedItems);else quickOutboundExisting(normalizedCode, matchedItems);
+                quickOutboundExisting(normalizedCode, matchedItems);
                 return;
             }
 
+            quickScanBlockedCode = normalizedCode;
             html5QrCode.stop().then(() => {
                 isScanningActive = false;
                 html5QrCode.clear();
@@ -1034,6 +1077,9 @@ async function startScanner() {
                     document.getElementById('scanExpiry').value = '';
                     document.getElementById('scanNote').value = '';
                     document.getElementById('scanQty').value = '1';
+                    populateInboundBatches(normalizedCode);
+                    document.getElementById('scanFormTitle').textContent = matchedItems.length ? '既有品項：已帶入基本資料，請確認入庫批次' : '新條碼：建立品項後入庫';
+                    saveWorkDraft();
                 } else {
                     document.getElementById('scanFormTitle').innerHTML = '<i class="fas fa-arrow-up"></i> 選擇領用資料';
                     populateBatchSelect(normalizedCode, 'scanBatchSelect', scanMode);
@@ -1072,7 +1118,7 @@ async function startScanner() {
     }
 }
 
-        async function resumeScanner() { document.getElementById('scanForm').classList.add('hidden'); document.getElementById('scanResult').classList.add('hidden'); await startScanner(); }
+        async function resumeScanner() { if(pendingWrite||writeInFlight){showAlert('請先確認上次送出結果');return;}if(!document.getElementById('scanForm').classList.contains('hidden')&&!confirm('重新掃描將放棄目前這筆未送出的入庫表單，確定繼續？'))return;document.getElementById('scanForm').classList.add('hidden');document.getElementById('scanResult').classList.add('hidden');scannedData=null;saveWorkDraft();renderWorkflowNotice();await startScanner(); }
 /* superseded toggleManualMode removed in Commercial v4 cleanup */
 
 /* superseded autoFillManual removed in Commercial v4 cleanup */
@@ -1126,6 +1172,7 @@ async function refreshStocktakeWorkflow() {
         const res = await getApiResource('stocktake');
         currentStocktakeSession = res.session || null;
         renderStocktakeSession();
+        restoreStocktakeInput();
     } catch(e) {
         if (!currentStocktakeSession) document.getElementById('stocktakeSessionBadge').textContent='讀取失敗';
     }
@@ -1248,7 +1295,7 @@ function populateLocationSelectors(){
     const dashboard=document.getElementById('dashboardLocationFilter');if(dashboard)dashboard.value=String(selectedDashboardLocationId||0);updateDashboardLocationHint();
 }
 function updateDashboardLocationHint(){const hint=document.getElementById('dashboardLocationHint');if(!hint)return;const location=activeLocationsOnly().find(x=>Number(x.location_id)===Number(selectedDashboardLocationId)),label=location?location.name:'全部庫位',count=new Set(scopedInventoryItems().map(x=>x.id)).size;hint.textContent=`目前顯示：${label}｜${count} 個品項`;}
-function setDashboardLocationFilter(){selectedDashboardLocationId=getSelectedLocationId('dashboardLocationFilter');filterItems();updateDashboard();loadAnomalyCenter();}
+function setDashboardLocationFilter(){selectedDashboardLocationId=getSelectedLocationId('dashboardLocationFilter');homePendingCode='';homeBatchChoices.clear();homeScanGate={code:'',misses:0};document.getElementById('homeBatchPicker').classList.add('hidden');filterItems();updateDashboard();loadAnomalyCenter();}
 function refreshScannerLocationContext(){if(scanMode==='outbound'&&scannedData)populateBatchSelect(scannedData,'scanBatchSelect','outbound');}
 function refreshManualLocationContext(){autoFillManual();}
 
@@ -1285,14 +1332,15 @@ function setSyncState(state){
 async function handlePortalLogin(){
     const acc=document.getElementById('loginAccount').value.trim(),pwd=document.getElementById('loginPassword').value.trim(),btn=document.getElementById('loginBtn');if(!acc||!pwd){showAlert('請輸入代號與密碼！');return;}
     btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin mr-2"></i>連線驗證中...';
-    try{const challenge=await postApi({action:'loginChallenge',account:acc}),passwordHash=await derivePasswordHash(pwd,challenge.salt,challenge.iterations),proof=await createLoginProof(passwordHash,challenge.challenge),res=await postApi({action:'login',account:acc,challengeId:challenge.challengeId,proof});CURRENT_USER_NAME=res.name;CURRENT_USER_ROLE=res.role||'operator';CURRENT_SESSION_TOKEN=res.token||'';CURRENT_CAPABILITIES=res.capabilities||capabilityFallback(CURRENT_USER_ROLE);if(!CURRENT_SESSION_TOKEN)throw new Error('伺服器未回傳登入憑證');document.getElementById('currentUserTag').innerText=`👤 ${res.name}｜${res.roleLabel||CURRENT_CAPABILITIES.roleLabel}`;document.getElementById('loginPortal').classList.add('hidden');const now=Date.now();localStorage.setItem('SHANSHI_SESSION',JSON.stringify({name:res.name,role:CURRENT_USER_ROLE,capabilities:CURRENT_CAPABILITIES,token:CURRENT_SESSION_TOKEN,timestamp:now,expiresAt:res.expiresAt||''}));updateRoleUi();startSessionTimer(now,res.expiresAt||'');hydrateInventoryCache();await loadData();}
+    try{const challenge=await postApi({action:'loginChallenge',account:acc}),passwordHash=await derivePasswordHash(pwd,challenge.salt,challenge.iterations),proof=await createLoginProof(passwordHash,challenge.challenge),res=await postApi({action:'login',account:acc,challengeId:challenge.challengeId,proof});CURRENT_USER_NAME=res.name;draftAccount=acc;CURRENT_USER_ROLE=res.role||'operator';CURRENT_SESSION_TOKEN=res.token||'';CURRENT_CAPABILITIES=res.capabilities||capabilityFallback(CURRENT_USER_ROLE);if(!CURRENT_SESSION_TOKEN)throw new Error('伺服器未回傳登入憑證');document.getElementById('currentUserTag').innerText=`👤 ${res.name}｜${res.roleLabel||CURRENT_CAPABILITIES.roleLabel}`;document.getElementById('loginPortal').classList.add('hidden');const now=Date.now();localStorage.setItem('SHANSHI_SESSION',JSON.stringify({account:acc,name:res.name,role:CURRENT_USER_ROLE,capabilities:CURRENT_CAPABILITIES,token:CURRENT_SESSION_TOKEN,timestamp:now,expiresAt:res.expiresAt||''}));updateRoleUi();startSessionTimer(now,res.expiresAt||'');hydrateInventoryCache();restoreWorkDraft(acc);await loadData();if(restoredTab)await switchTab(restoredTab);}
     catch(e){showAlert('🚨 登入失敗：\n'+e.message)}finally{btn.disabled=false;btn.innerText='登入';}
 }
 function checkLoginSession(){
-    const raw=localStorage.getItem('SHANSHI_SESSION');if(raw){try{const session=JSON.parse(raw),now=Date.now(),exp=session.expiresAt?Date.parse(session.expiresAt):0;if(session.token&&(exp?now<exp:now-session.timestamp<1800000)){CURRENT_USER_NAME=session.name;CURRENT_USER_ROLE=session.role||'operator';CURRENT_CAPABILITIES=session.capabilities||capabilityFallback(CURRENT_USER_ROLE);CURRENT_SESSION_TOKEN=session.token;document.getElementById('currentUserTag').innerText=`👤 ${session.name}｜${CURRENT_CAPABILITIES.roleLabel||CURRENT_USER_ROLE}`;updateRoleUi();document.getElementById('loginPortal').classList.add('hidden');startSessionTimer(session.timestamp||now,session.expiresAt||'');hydrateInventoryCache();loadData();return;}}catch{}}handleLogout();
+    const raw=localStorage.getItem('SHANSHI_SESSION');if(raw){try{const session=JSON.parse(raw),now=Date.now(),exp=session.expiresAt?Date.parse(session.expiresAt):0;if(session.token&&session.account&&(exp?now<exp:now-session.timestamp<1800000)){CURRENT_USER_NAME=session.name;draftAccount=session.account||session.name;CURRENT_USER_ROLE=session.role||'operator';CURRENT_CAPABILITIES=session.capabilities||capabilityFallback(CURRENT_USER_ROLE);CURRENT_SESSION_TOKEN=session.token;document.getElementById('currentUserTag').innerText=`👤 ${session.name}｜${CURRENT_CAPABILITIES.roleLabel||CURRENT_USER_ROLE}`;updateRoleUi();document.getElementById('loginPortal').classList.add('hidden');startSessionTimer(session.timestamp||now,session.expiresAt||'');hydrateInventoryCache();restoreWorkDraft(draftAccount);loadData().then(()=>{if(restoredTab)switchTab(restoredTab);});return;}}catch{}}handleLogout();
 }
 function handleLogout(){
-    if(sessionInterval)clearInterval(sessionInterval);if(backgroundSyncTimer)clearTimeout(backgroundSyncTimer);continuousScanRestartToken++;scanSessionCounts.inbound.clear();scanSessionCounts.outbound.clear();renderScanSession();hasLiveInventory=false;inventorySyncPromise=null;document.getElementById('sessionTimer')?.classList.add('hidden');const token=CURRENT_SESSION_TOKEN;localStorage.removeItem('SHANSHI_SESSION');CURRENT_USER_NAME='';CURRENT_USER_ROLE='operator';CURRENT_CAPABILITIES=capabilityFallback('operator');CURRENT_SESSION_TOKEN='';currentStocktakeSession=null;selectedStocktakeLine=null;updateRoleUi();if(token&&API_URL)fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({action:'logout',_requestId:createRequestId()}),keepalive:true}).catch(()=>{});document.getElementById('currentUserTag').innerText='👤 未登入';document.getElementById('loginPortal').classList.remove('hidden');document.getElementById('loginAccount').value='';document.getElementById('loginPassword').value='';setSyncState('hidden');
+    saveWorkDraft();stopWorkCameras();draftAccount='';pendingWrite=null;inlineDrafts.clear();modifiedScanIndices.clear();restoredStocktakeDraft=null;restoredTab='';homePendingCode='';homeBatchChoices.clear();document.getElementById('scanForm').classList.add('hidden');for(const id of draftFieldIds){const el=document.getElementById(id);if(el&&el.tagName!=='SELECT'&&el.type!=='checkbox')el.value='';}
+    if(sessionInterval)clearInterval(sessionInterval);if(backgroundSyncTimer)clearTimeout(backgroundSyncTimer);continuousScanRestartToken++;scanSessionCounts.inbound.clear();scanSessionCounts.outbound.clear();renderScanSession();hasLiveInventory=false;inventorySyncPromise=null;document.getElementById('sessionTimer')?.classList.add('hidden');const token=CURRENT_SESSION_TOKEN;localStorage.removeItem('SHANSHI_SESSION');CURRENT_USER_NAME='';CURRENT_USER_ROLE='operator';CURRENT_CAPABILITIES=capabilityFallback('operator');CURRENT_SESSION_TOKEN='';currentStocktakeSession=null;selectedStocktakeLine=null;updateRoleUi();if(token&&API_URL)fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({action:'logout',_requestId:createRequestId()}),keepalive:true}).catch(()=>{});document.getElementById('currentUserTag').innerText='👤 未登入';document.getElementById('loginPortal').classList.remove('hidden');document.getElementById('loginAccount').value='';document.getElementById('loginPassword').value='';setSyncState('hidden');renderWorkflowNotice();
 }
 
 function updateDashboard(){
@@ -1311,29 +1359,57 @@ function renderItems(items){
         const seenFefo=new Set();
         html+=`<article class="inventory-card-v4"><div class="inventory-card-head"><div><h3>${escapeHtmlClient(base.name)}</h3><div class="v4-mono">ID ${escapeHtmlClient(id)}${base.category?` · ${escapeHtmlClient(base.category)}`:''}</div></div><div class="status-wrap">${chips}</div></div><div class="inventory-kpis"><div><span>總庫存</span><b class="${low?'danger':''}">${total}</b></div><div title="安全庫存是低庫存警示線；目標庫存是補貨後希望達到的數量"><span>安全庫存 / 目標</span><b>${base.min_qty} / ${base.target_qty||'-'}</b></div><div><span>最後盤點</span><b class="small">${latest?escapeHtmlClient(formatToYYYYMMDDHHMM(latest)):'尚未盤點'}</b></div></div><div class="batch-list-v4">`;
         for(const r of rows){const idx=itemIndexes.sourceIndexByBatch.get(getBatchIndexKey(r))??-1;const isFefo=r.qty>0&&!r.expired&&!seenFefo.has(r.location_id);if(isFefo)seenFefo.add(r.location_id);html+=`<div id="inline-row-${idx}" class="batch-row-v4"><div class="batch-main"><div class="batch-tags"><span class="location-chip"><i class="fas fa-warehouse"></i>${escapeHtmlClient(r.location_name||'未指定')}</span>${isFefo?'<span class="fefo-chip">FEFO</span>':''}${r.expired?'<span class="expired-chip">已過期</span>':''}</div><div><b>效期 ${escapeHtmlClient(formatToYYYYMMDD(r.expiry))}</b> · LOT <span class="v4-mono">${escapeHtmlClient(cleanLotString(r.lot))}</span> · <b>${r.qty}</b> 件</div>${r.note?`<div class="batch-note"><i class="fas fa-sticky-note mr-1"></i><strong>入庫備註：</strong>${escapeHtmlClient(r.note)}</div>`:''}</div><div class="batch-actions">${canOperateUi()?`<button onclick="startInlineStocktake(${idx},false)" class="mini-btn primary">快速盤</button>`:''}</div><div id="inline-input-panel-${idx}" class="hidden inline-stocktake-v4"><span>實盤</span><input type="number" min="0" id="inline-qty-${idx}" value="${r.qty}"><button id="inline-save-btn-${idx}" onclick="submitCardStocktake(${idx})" class="mini-btn success">儲存</button><button id="inline-end-btn-${idx}" onclick="endInlineStocktake(${idx})" class="mini-btn">取消</button><button id="inline-dec-btn-${idx}" onclick="decrementInlineQty(${idx})" class="hidden">-1</button><span id="action-trigger-box-${idx}" class="hidden"></span></div></div>`;}html+='</div></article>';
-    });box.innerHTML=html;
+    });box.innerHTML=html;restoreInlineInputs();
 }
-function startInlineStocktake(index,isBarcodeScan=false){if(!canOperateUi()){showAlert('目前帳號為唯讀，不能執行盤點');return;}if(!hasLiveInventory){showToast('⚠️ 尚未取得即時庫存','error');return;}const row=document.getElementById(`inline-row-${index}`),panel=document.getElementById(`inline-input-panel-${index}`),input=document.getElementById(`inline-qty-${index}`);if(!row||!panel||!input)return;panel.classList.remove('hidden');input.disabled=false;if(!modifiedScanIndices.has(index)){input.value=isBarcodeScan?0:allItems[index].qty;modifiedScanIndices.add(index);}if(isBarcodeScan)input.value=(parseInt(input.value)||0)+1;input.focus();}
-function endInlineStocktake(index){document.getElementById(`inline-input-panel-${index}`)?.classList.add('hidden');modifiedScanIndices.delete(index);}
-async function submitCardStocktake(index){if(!(await ensureLiveInventoryReady()))return;const item=allItems[index],input=document.getElementById(`inline-qty-${index}`),qty=parseInt(input?.value);if(!Number.isFinite(qty)||qty<0){showAlert('請輸入正確實盤數量');return;}const diff=qty-Number(item.qty||0);let reason='快速盤點';if(diff!==0){reason=prompt(`帳面 ${item.qty}、實盤 ${qty}、差異 ${diff>0?'+':''}${diff}\n請輸入差異原因：`,'快速盤點調整')||'';if(!reason)return;}const btn=document.getElementById(`inline-save-btn-${index}`);if(btn){btn.disabled=true;btn.textContent='儲存中';}try{const res=await postApi({type:'盤點',id:item.id,name:item.name,lot:item.lot,expiry:item.expiry,qty,locationId:item.location_id,reason,note:'[首頁快速盤點]'});applyMutationResponse(res);modifiedScanIndices.delete(index);showToast('✅ 盤點已更新','success');scheduleBackgroundSync();}catch(e){showAlert('盤點失敗：'+e.message)}finally{if(btn){btn.disabled=false;btn.textContent='儲存';}}}
+function startInlineStocktake(index,isBarcodeScan=false){
+    if(!canOperateUi()){showAlert('目前帳號為唯讀，不能執行盤點');return;}
+    if(!hasLiveInventory){showToast('尚未取得即時庫存','error');return;}
+    if(pendingWrite||writeInFlight){showAlert('請先重新確認上次送出結果');return;}
+    const item=allItems[index],panel=document.getElementById(`inline-input-panel-${index}`),input=document.getElementById(`inline-qty-${index}`);
+    if(!item||!panel||!input)return;
+    panel.classList.remove('hidden');input.disabled=false;
+    const draft=inlineDrafts.get(getBatchIndexKey(item));input.value=draft?draft.qty:(isBarcodeScan?0:item.qty);
+    if(isBarcodeScan)input.value=Number(input.value)+1;
+    modifiedScanIndices.add(index);rememberInlineQty(index);input.focus();
+}
+function endInlineStocktake(index){if(pendingWrite||writeInFlight){showAlert('請先重新確認上次送出結果');return;}document.getElementById(`inline-input-panel-${index}`)?.classList.add('hidden');if(allItems[index])inlineDrafts.delete(getBatchIndexKey(allItems[index]));modifiedScanIndices.delete(index);saveWorkDraft();renderWorkflowNotice();}
+async function submitCardStocktake(index){if(!(await ensureLiveInventoryReady()))return;const item=allItems[index],input=document.getElementById(`inline-qty-${index}`),qty=parseInt(input?.value);if(!Number.isFinite(qty)||qty<0){showAlert('請輸入正確實盤數量');return;}const diff=qty-Number(item.qty||0);let reason='快速盤點';if(diff!==0){reason=prompt(`帳面 ${item.qty}、實盤 ${qty}、差異 ${diff>0?'+':''}${diff}\n請輸入差異原因：`,'快速盤點調整')||'';if(!reason)return;}const btn=document.getElementById(`inline-save-btn-${index}`);if(btn){btn.disabled=true;btn.textContent='儲存中';}try{const res=await postApi({type:'盤點',id:item.id,name:item.name,lot:item.lot,expiry:item.expiry,qty,locationId:item.location_id,reason,note:'[首頁快速盤點]'},{draftContext:{inlineKey:getBatchIndexKey(item)}});applyMutationResponse(res);modifiedScanIndices.delete(index);showToast('✅ 盤點已更新','success');scheduleBackgroundSync();}catch(e){showAlert('盤點失敗：'+e.message)}finally{if(btn){btn.disabled=false;btn.textContent='儲存';}}}
 
 function populateBatchSelect(id,selectElementId,mode){const sel=document.getElementById(selectElementId);if(!sel)return;const locId=selectElementId.startsWith('scan')?getSelectedLocationId('scanLocation'):getSelectedLocationId('manualLocation'),today=taipeiYmd();let rows=(itemIndexes.byId.get(id)||[]).filter(i=>i.qty>0&&(!locId||Number(i.location_id)===locId)&&(mode!=='outbound'||!i.expiry||i.expiry>=today));rows.sort((a,b)=>fefoSortValue(a).localeCompare(fefoSortValue(b)));sel.innerHTML=rows.length?rows.map((b,i)=>`<option value='${escapeHtmlClient(JSON.stringify({batch_id:b.batch_id,lot:b.lot,expiry:b.expiry,location_id:b.location_id}))}'>${i===0?'⭐ FEFO｜':''}${escapeHtmlClient(b.location_name)}｜${escapeHtmlClient(formatToYYYYMMDD(b.expiry))}｜LOT ${escapeHtmlClient(cleanLotString(b.lot))}｜${b.qty} 件</option>`).join(''):'<option value="">無可用庫存批次</option>';}
 function autoFillManual(){const id=document.getElementById('manualId').value.trim(),mode=document.getElementById('manualType').value,loc=getSelectedLocationId('manualLocation'),rows=(itemIndexes.byId.get(id)||[]).filter(x=>!loc||Number(x.location_id)===loc),name=document.getElementById('manualName');if(mode==='入庫'){if(canViewCostUi())document.getElementById('manualPrice').value=rows.find(x=>x.price!==null)?.price??'';name.value='';document.getElementById('manualBatchSelect').innerHTML='';}else if(rows.length){name.value=rows[0].name||id;populateBatchSelect(id,'manualBatchSelect','outbound');}else{name.value='';document.getElementById('manualBatchSelect').innerHTML='';}}
 function toggleManualMode(){const mode=document.getElementById('manualType').value,name=document.getElementById('manualName');document.getElementById('manualDetailsContainer').classList.toggle('hidden',mode!=='入庫');document.getElementById('manualBatchContainer').classList.toggle('hidden',mode==='入庫');document.getElementById('manualPriceContainer').classList.toggle('hidden',mode!=='入庫'||!canViewCostUi());name.readOnly=mode!=='入庫';name.classList.toggle('bg-gray-100',mode!=='入庫');if(mode==='入庫')name.value='';else toggleManualFefo();autoFillManual();}
-function setScanMode(mode){scanMode=mode;continuousScanRestartToken++;quickScanBlockedCode='';quickScanMissFrames=0;document.getElementById('scanInbound').className=`flex-1 py-2.5 rounded-lg transition text-sm ${mode==='inbound'?'bg-blue-600 text-white font-bold shadow-sm':'bg-transparent text-gray-500 hover:text-gray-700 font-bold'}`;document.getElementById('scanOutbound').className=`flex-1 py-2.5 rounded-lg transition text-sm ${mode==='outbound'?'bg-blue-600 text-white font-bold shadow-sm':'bg-transparent text-gray-500 hover:text-gray-700 font-bold'}`;document.getElementById('scanManualDetails').classList.toggle('hidden',mode!=='inbound');document.getElementById('scanPriceContainer').classList.toggle('hidden',mode!=='inbound'||!canViewCostUi());document.getElementById('scanBatchContainer').classList.toggle('hidden',mode==='inbound');document.getElementById('scanName').readOnly=mode!=='inbound';const hint=document.getElementById('scanModeHint');if(hint)hint.innerHTML=scanModeHintHtml(mode);renderScanSession();if(mode==='outbound'&&scannedData)populateBatchSelect(scannedData,'scanBatchSelect','outbound');}
+function setScanMode(mode){if(mode!==scanMode&&(pendingWrite||writeInFlight)){showAlert('請先確認上次送出結果');return;}if(mode!==scanMode&&!document.getElementById('scanForm').classList.contains('hidden')){if(!confirm('切換作業類型將放棄目前入庫表單，確定切換？'))return;document.getElementById('scanForm').classList.add('hidden');scannedData=null;}scanMode=mode;continuousScanRestartToken++;quickScanBlockedCode='';quickScanMissFrames=0;document.getElementById('scanInbound').className=`flex-1 py-2.5 rounded-lg transition text-sm ${mode==='inbound'?'bg-blue-600 text-white font-bold shadow-sm':'bg-transparent text-gray-500 hover:text-gray-700 font-bold'}`;document.getElementById('scanOutbound').className=`flex-1 py-2.5 rounded-lg transition text-sm ${mode==='outbound'?'bg-blue-600 text-white font-bold shadow-sm':'bg-transparent text-gray-500 hover:text-gray-700 font-bold'}`;document.getElementById('scanManualDetails').classList.toggle('hidden',mode!=='inbound');document.getElementById('scanPriceContainer').classList.toggle('hidden',mode!=='inbound'||!canViewCostUi());document.getElementById('scanBatchContainer').classList.toggle('hidden',mode==='inbound');document.getElementById('scanName').readOnly=mode!=='inbound';document.getElementById('inboundBatchPicker').classList.toggle('hidden',mode!=='inbound'||!scannedData);const hint=document.getElementById('scanModeHint');if(hint)hint.innerHTML=scanModeHintHtml(mode);renderScanSession();if(mode==='outbound'&&scannedData)populateBatchSelect(scannedData,'scanBatchSelect','outbound');}
 function chooseQuickInboundMatch(matchedItems,locationId){const sameLocation=matchedItems.filter(x=>Number(x.location_id)===Number(locationId)),pool=sameLocation.length?sameLocation:matchedItems;return [...pool].sort((a,b)=>Number(b.batch_id||0)-Number(a.batch_id||0))[0]||null;}
 function fillQuickInboundFields(item){document.getElementById('scanName').value=item.name||item.id;document.getElementById('scanLot').value=item.lot||'';document.getElementById('scanExpiry').value=item.expiry||'';document.getElementById('scanQty').value='1';document.getElementById('scanNote').value=item.note||item.batch_note||'';if(canViewCostUi())document.getElementById('scanPrice').value=item.price??'';}
-function recordScanSession(mode,item,location){const map=scanSessionCounts[mode],locationId=Number(location?.location_id||0),key=mode==='inbound'?`${item.batch_id}::${locationId}`:`${item.id}::${locationId}`,current=map.get(key)||{id:item.id,batchId:Number(item.batch_id||0),locationId,name:item.name||item.id,locationName:location?.name||'指定庫位',count:0};current.count+=1;map.set(key,current);renderScanSession();}
-function renderScanSession(){const map=scanSessionCounts[scanMode],rows=[...map.values()],total=rows.reduce((sum,x)=>sum+x.count,0),panel=document.getElementById('scanSessionPanel');if(!panel)return;panel.classList.toggle('hidden',total===0);document.getElementById('scanSessionTitle').textContent=scanMode==='inbound'?'本次連續入庫':'本次連續出庫';document.getElementById('scanSessionCount').textContent=`${total} 筆／${total} 件`;document.getElementById('scanSessionItems').innerHTML=rows.map(x=>`<div><span>${escapeHtmlClient(x.name)}｜${escapeHtmlClient(x.locationName)}</span><b>${x.count}</b></div>`).join('');}
-async function finishScanSession(){const mode=scanMode,map=scanSessionCounts[mode],rows=[...map.values()],total=rows.reduce((sum,x)=>sum+x.count,0);if(!total){showToast('本次尚無掃碼紀錄','error');return;}continuousScanRestartToken++;isScanningActive=false;if(html5QrCode){try{if(html5QrCode.isScanning)await html5QrCode.stop()}catch{}try{html5QrCode.clear()}catch{}html5QrCode=null;}document.getElementById('scannerPlaceholder').classList.remove('hidden');const action=mode==='inbound'?'入庫':'出庫',confirmed=await confirmQuickScanBatch(mode,rows,total);if(!confirmed){map.clear();renderScanSession();document.getElementById('scanResult').classList.add('hidden');showToast(`本次${action}已取消，庫存未異動`,'error');return;}quickScanInProgress=true;try{const res=await postApi({action:'batchQuickScan',mode,items:rows.map(x=>({id:x.id,batchId:x.batchId,locationId:x.locationId,qty:x.count}))},{timeoutMs:45000,retries:1});applyMutationResponse(res);map.clear();renderScanSession();document.getElementById('scanResult').classList.add('hidden');showAlert(`本次${action}已完成\n\n共 ${total} 筆／${total} 件`);scheduleBackgroundSync();}catch(e){showAlert(`本次${action}失敗，庫存未異動：`+e.message);}finally{quickScanInProgress=false;}}
-async function quickInboundExisting(id,matchedItems){if(quickScanInProgress)return;const locationId=getSelectedLocationId('scanLocation'),item=chooseQuickInboundMatch(matchedItems,locationId);if(!locationId||!item){showAlert('請先選擇作業庫位');return;}const itemName=item.name||id,location=activeLocationsOnly().find(x=>Number(x.location_id)===locationId),status=document.getElementById('scannedCode');quickScanInProgress=true;quickScanBlockedCode=id;quickScanMissFrames=0;fillQuickInboundFields(item);try{recordScanSession('inbound',{...item,name:itemName},location);if(status)status.textContent=`${itemName}｜待確認入庫 +1`;showToast(`已暫存 ${itemName}｜入庫 +1，完成作業後才會寫入`,'success');}finally{quickScanInProgress=false;}}
+function recordScanSession(mode,item,location){const map=scanSessionCounts[mode],locationId=Number(location?.location_id||0),key=mode==='inbound'?`${item.batch_id}::${locationId}`:`${item.id}::${locationId}`,current=map.get(key)||{id:item.id,batchId:Number(item.batch_id||0),locationId,name:item.name||item.id,locationName:location?.name||'指定庫位',count:0};current.count+=1;current.lot=item.lot||'';current.expiry=item.expiry||'';map.set(key,current);renderScanSession();saveWorkDraft();renderWorkflowNotice();}
+function renderScanSession(){const map=scanSessionCounts[scanMode],rows=[...map.values()],total=rows.reduce((sum,x)=>sum+x.count,0),panel=document.getElementById('scanSessionPanel');if(!panel)return;panel.classList.toggle('hidden',total===0);document.getElementById('scanSessionTitle').textContent=scanMode==='inbound'?'本次連續入庫':'本次連續出庫';document.getElementById('scanSessionCount').textContent=`${total} 筆／${total} 件`;document.getElementById('scanSessionItems').innerHTML=rows.map(x=>`<div><span>${escapeHtmlClient(x.name)}｜${escapeHtmlClient(x.locationName)}${scanMode==='inbound'?`｜LOT ${escapeHtmlClient(x.lot||'無')}｜效期 ${escapeHtmlClient(x.expiry||'未填')}`:''}</span><b>${x.count}</b></div>`).join('');}
+async function finishScanSession(){if(pendingWrite){await retryPendingWrite();return;}if(writeInFlight)return;const mode=scanMode,map=scanSessionCounts[mode],rows=[...map.values()],total=rows.reduce((sum,x)=>sum+x.count,0);if(!total){showToast('本次尚無掃碼紀錄','error');return;}continuousScanRestartToken++;isScanningActive=false;if(html5QrCode){try{if(html5QrCode.isScanning)await html5QrCode.stop()}catch{}try{html5QrCode.clear()}catch{}html5QrCode=null;}document.getElementById('scannerPlaceholder').classList.remove('hidden');const action=mode==='inbound'?'入庫':'出庫',confirmed=await confirmQuickScanBatch(mode,rows,total);if(!confirmed){map.clear();renderScanSession();saveWorkDraft();renderWorkflowNotice();document.getElementById('scanResult').classList.add('hidden');showToast(`本次${action}已取消，庫存未異動`,'error');return;}quickScanInProgress=true;try{const res=await postApi({action:'batchQuickScan',mode,items:rows.map(x=>({id:x.id,batchId:x.batchId,locationId:x.locationId,qty:x.count}))},{timeoutMs:45000,retries:1});applyMutationResponse(res);map.clear();renderScanSession();document.getElementById('scanResult').classList.add('hidden');showAlert(`本次${action}已完成\n\n共 ${total} 筆／${total} 件`);scheduleBackgroundSync();}catch(e){showAlert(e.message);}finally{quickScanInProgress=false;}}
 async function quickOutboundExisting(id,matchedItems){if(quickScanInProgress)return;const locationId=getSelectedLocationId('scanLocation'),today=taipeiYmd(),available=matchedItems.filter(x=>Number(x.location_id)===locationId&&Number(x.qty)>0&&(!x.expiry||x.expiry>=today));if(!locationId){showAlert('請先選擇作業庫位');return;}const staged=[...scanSessionCounts.outbound.values()].filter(x=>x.id===id&&x.locationId===locationId).reduce((sum,x)=>sum+x.count,0),availableTotal=available.reduce((sum,x)=>sum+Number(x.qty||0),0);if(!available.length||availableTotal<=staged){playErrorSound();showAlert(`此庫位可出庫庫存不足；目前 ${availableTotal} 件，本次已暫存 ${staged} 件`);return;}const item=[...available].sort((a,b)=>fefoSortValue(a).localeCompare(fefoSortValue(b)))[0],itemName=item.name||id,location=activeLocationsOnly().find(x=>Number(x.location_id)===locationId),status=document.getElementById('scannedCode');quickScanInProgress=true;quickScanBlockedCode=id;quickScanMissFrames=0;try{recordScanSession('outbound',{...item,name:itemName},location);if(status)status.textContent=`${itemName}｜待確認出庫 -1`;showToast(`已暫存 ${itemName}｜出庫 -1，完成作業後才會扣庫存`,'success');}finally{quickScanInProgress=false;}}
-async function submitManual(){if(!(await ensureLiveInventoryReady()))return;if(!canOperateUi()){showAlert('目前帳號為唯讀');return;}const id=document.getElementById('manualId').value.trim(),type=document.getElementById('manualType').value,qty=parseInt(document.getElementById('manualQty').value),loc=getSelectedLocationId('manualLocation'),name=document.getElementById('manualName').value.trim()||id,note=document.getElementById('manualNote').value.trim(),btn=document.getElementById('manualSubmitBtn');if(!id||!Number.isFinite(qty)||qty<=0||!loc){showAlert('請填寫 ID、儲位與大於 0 的數量');return;}const fefo=type==='領用'&&document.getElementById('manualUseFefo')?.checked;let payload;if(fefo)payload={action:'fefoIssue',id,qty,note,locationId:loc};else{let lot='',expiry='';if(type==='入庫'){lot=document.getElementById('manualLot').value.trim();expiry=document.getElementById('manualExpiry').value;if(!lot&&expiry)lot=expiry.replaceAll('-','');}else{const v=document.getElementById('manualBatchSelect').value;if(!v){showAlert('請選擇可用批次');return;}const x=JSON.parse(v);lot=x.lot;expiry=x.expiry;}payload={type,id,name,lot,expiry,qty,note,locationId:loc};if(canViewCostUi())payload.price=Number(document.getElementById('manualPrice').value)||0;}btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 寫入中';try{const res=await postApi(payload);applyMutationResponse(res);showToast(fefo?'✅ FEFO 領用完成':'✅ 作業已完成','success');['manualId','manualName','manualLot','manualExpiry','manualQty','manualPrice','manualNote'].forEach(x=>{const e=document.getElementById(x);if(e)e.value=''});document.getElementById('manualBatchSelect').innerHTML='';scheduleBackgroundSync();}catch(e){showAlert('送出失敗：'+e.message)}finally{btn.disabled=false;btn.textContent='送出作業';}}
-async function submitScan(){if(!(await ensureLiveInventoryReady()))return;if(!canOperateUi()){showAlert('目前帳號為唯讀');return;}const qty=parseInt(document.getElementById('scanQty').value),loc=getSelectedLocationId('scanLocation'),btn=document.getElementById('scanSubmitBtn'),note=document.getElementById('scanNote').value.trim(),name=document.getElementById('scanName').value.trim()||scannedData;if(!scannedData||!Number.isFinite(qty)||qty<=0||!loc){showAlert('請確認條碼、儲位與數量');return;}const fefo=scanMode==='outbound'&&document.getElementById('scanUseFefo')?.checked;let payload;if(fefo)payload={action:'fefoIssue',id:scannedData,qty,note,locationId:loc};else{let lot='',expiry='';if(scanMode==='inbound'){lot=document.getElementById('scanLot').value.trim();expiry=document.getElementById('scanExpiry').value;if(!lot&&expiry)lot=expiry.replaceAll('-','');}else{const v=document.getElementById('scanBatchSelect').value;if(!v){showAlert('無可用批次');return;}const x=JSON.parse(v);lot=x.lot;expiry=x.expiry;}payload={type:scanMode==='inbound'?'入庫':'領用',id:scannedData,name,lot,expiry,qty,note,locationId:loc};if(canViewCostUi())payload.price=Number(document.getElementById('scanPrice').value)||0;}btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 寫入中';try{const res=await postApi(payload);applyMutationResponse(res);showToast('✅ 資料已成功儲存','success');document.getElementById('scanForm').classList.add('hidden');document.getElementById('scanResult').classList.add('hidden');document.getElementById('scanNote').value='';scheduleBackgroundSync();startScanner().catch(()=>{});}catch(e){showAlert('送出失敗：'+e.message)}finally{btn.disabled=false;btn.textContent='確認送出';}}
+async function submitManual(){if(!(await ensureLiveInventoryReady()))return;if(!canOperateUi()){showAlert('目前帳號為唯讀');return;}const id=document.getElementById('manualId').value.trim(),type=document.getElementById('manualType').value,qty=parseInt(document.getElementById('manualQty').value),loc=getSelectedLocationId('manualLocation'),name=document.getElementById('manualName').value.trim()||id,note=document.getElementById('manualNote').value.trim(),btn=document.getElementById('manualSubmitBtn');if(!id||!Number.isFinite(qty)||qty<=0||!loc){showAlert('請填寫 ID、儲位與大於 0 的數量');return;}const fefo=type==='領用'&&document.getElementById('manualUseFefo')?.checked;let payload;if(fefo)payload={action:'fefoIssue',id,qty,note,locationId:loc};else{let lot='',expiry='';if(type==='入庫'){lot=document.getElementById('manualLot').value.trim();expiry=document.getElementById('manualExpiry').value;if(!lot&&expiry)lot=expiry.replaceAll('-','');}else{const v=document.getElementById('manualBatchSelect').value;if(!v){showAlert('請選擇可用批次');return;}const x=JSON.parse(v);lot=x.lot;expiry=x.expiry;}payload={type,id,name,lot,expiry,qty,note,locationId:loc};if(canViewCostUi())payload.price=Number(document.getElementById('manualPrice').value)||0;}btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 寫入中';try{const res=await postApi(payload,{draftContext:'manual'});applyMutationResponse(res);showToast(fefo?'✅ FEFO 領用完成':'✅ 作業已完成','success');['manualId','manualName','manualLot','manualExpiry','manualQty','manualPrice','manualNote'].forEach(x=>{const e=document.getElementById(x);if(e)e.value=''});document.getElementById('manualBatchSelect').innerHTML='';scheduleBackgroundSync();}catch(e){showAlert('送出失敗：'+e.message)}finally{btn.disabled=false;btn.textContent='送出作業';}}
+async function submitScan(){if(!(await ensureLiveInventoryReady()))return;if(!canOperateUi()){showAlert('目前帳號為唯讀');return;}const qty=Number(document.getElementById('scanQty').value),loc=getSelectedLocationId('scanLocation'),btn=document.getElementById('scanSubmitBtn'),note=document.getElementById('scanNote').value.trim(),name=document.getElementById('scanName').value.trim()||scannedData;if(!scannedData||!Number.isInteger(qty)||qty<=0||!loc){showAlert('請確認條碼、儲位與數量');return;}const fefo=scanMode==='outbound'&&document.getElementById('scanUseFefo')?.checked;let payload;if(fefo)payload={action:'fefoIssue',id:scannedData,qty,note,locationId:loc};else{let lot='',expiry='';if(scanMode==='inbound'){lot=document.getElementById('scanLot').value.trim();expiry=document.getElementById('scanExpiry').value;if(!lot&&expiry)lot=expiry.replaceAll('-','');}else{const v=document.getElementById('scanBatchSelect').value;if(!v){showAlert('無可用批次');return;}const x=JSON.parse(v);lot=x.lot;expiry=x.expiry;}payload={type:scanMode==='inbound'?'入庫':'領用',id:scannedData,name,lot,expiry,qty,note,locationId:loc};if(canViewCostUi())payload.price=Number(document.getElementById('scanPrice').value)||0;}if(scanMode==='inbound'&&!confirm(`確認入庫\n品名：${name}\n庫位：${document.getElementById('scanLocation').selectedOptions[0]?.textContent}\nLOT：${payload.lot||'未填'}\n效期：${payload.expiry||'未填'}\n數量：${qty} 件`))return;btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 寫入中';try{const res=await postApi(payload,{draftContext:'scanner'});applyMutationResponse(res);showToast('✅ 資料已成功儲存','success');document.getElementById('scanForm').classList.add('hidden');document.getElementById('scanResult').classList.add('hidden');document.getElementById('scanNote').value='';scheduleBackgroundSync();startScanner().catch(()=>{});}catch(e){showAlert('送出失敗：'+e.message)}finally{btn.disabled=false;btn.textContent='確認送出';}}
 
 async function startHomeScanner(){if(!canOperateUi()){showAlert('目前帳號為唯讀');return;}if(!selectedDashboardLocationId&&activeLocationsOnly().length>1){showAlert('快速掃描盤點前，請先在首頁選擇一個儲位');return;}return await startHomeScannerV4Impl();}
-async function startHomeScannerV4Impl(){try{await ensureQrLibraryLoaded()}catch(e){showToast(e.message,'error');return;}if(homeQrCode){try{if(homeQrCode.isScanning)await homeQrCode.stop()}catch{}try{homeQrCode.clear()}catch{}homeQrCode=null;}homeQrCode=new Html5Qrcode('homeReader');isHomeScanningActive=true;try{await homeQrCode.start({facingMode:'environment'},{fps:15,aspectRatio:1},decodedText=>{if(!isHomeScanningActive)return;const now=Date.now();if(now-lastScanTime<1000)return;lastScanTime=now;const candidates=(itemIndexes.byId.get(decodedText)||[]).filter(i=>!selectedDashboardLocationId||Number(i.location_id)===selectedDashboardLocationId);const item=candidates.find(i=>document.getElementById(`inline-row-${itemIndexes.sourceIndexByBatch.get(getBatchIndexKey(i))}`));if(!item){playErrorSound();showToast('❌ 此儲位無此品項','error');return;}const idx=itemIndexes.sourceIndexByBatch.get(getBatchIndexKey(item));playBeepSound();startInlineStocktake(idx,true);document.getElementById('homeScanStatus').innerHTML=`<span class="text-green-400 font-bold">${escapeHtmlClient(item.name)}</span>｜實盤 ${document.getElementById(`inline-qty-${idx}`).value}`;},()=>{});}catch(e){isHomeScanningActive=false;showToast('相機啟動失敗','error')}}
-async function submitAllHomeScans(){if(!(await ensureLiveInventoryReady()))return;if(!modifiedScanIndices.size){showToast('尚未累計任何項目','error');return;}const rows=[];for(const idx of modifiedScanIndices){const item=allItems[idx],qty=parseInt(document.getElementById(`inline-qty-${idx}`)?.value);if(!Number.isFinite(qty)||qty<0)continue;rows.push({type:'盤點',batch_id:item.batch_id,id:item.id,lot:item.lot,expiry:item.expiry,qty,location_id:item.location_id,reason:qty===Number(item.qty)?'快速批次盤點':'POS 掃描盤點差異',note:'[POS 掃描盤點]'});}if(!rows.length)return;const btn=document.getElementById('homeScanSaveBtn'),old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 儲存中';try{const res=await postApi({action:'batchStocktake',items:rows});applyMutationResponse(res);modifiedScanIndices.clear();showToast('✅ 快速盤點已完成','success');scheduleBackgroundSync();}catch(e){showAlert('盤點失敗：'+e.message)}finally{btn.disabled=false;btn.innerHTML=old;}}
+async function startHomeScannerV4Impl(){
+    try{await ensureQrLibraryLoaded()}catch(e){showToast(e.message,'error');return;}
+    if(homeQrCode){try{if(homeQrCode.isScanning)await homeQrCode.stop();homeQrCode.clear()}catch{}homeQrCode=null;}
+    homeQrCode=new Html5Qrcode('homeReader');isHomeScanningActive=true;
+    try{await homeQrCode.start({facingMode:'environment'},{fps:15,aspectRatio:1},handleHomeScan,homeScanMiss);}
+    catch(e){isHomeScanningActive=false;showToast('相機啟動失敗','error');}
+}
+async function submitAllHomeScans(){
+    if(!(await ensureLiveInventoryReady()))return;
+    if(!inlineDrafts.size){showToast('尚未累計任何項目','error');return;}
+    const rows=[];
+    for(const [key,draft] of inlineDrafts){
+        const idx=itemIndexes.sourceIndexByBatch.get(key),item=allItems[idx],qty=Number(draft.qty);
+        if(!item){showAlert('草稿批次已不在目前庫存，請重新核對後再送出');return;}
+        if(String(draft.qty).trim()===''||!Number.isInteger(qty)||qty<0){showAlert('每筆實盤數量必須是 0 以上整數');return;}
+        rows.push({type:'盤點',batch_id:item.batch_id,id:item.id,lot:item.lot,expiry:item.expiry,qty,location_id:item.location_id,reason:qty===Number(item.qty)?'快速批次盤點':'POS 掃描盤點差異',note:'[POS 掃描盤點]'});
+    }
+    const btn=document.getElementById('homeScanSaveBtn'),old=btn.innerHTML;btn.disabled=true;btn.textContent='儲存中';
+    try{const res=await postApi({action:'batchStocktake',items:rows});applyMutationResponse(res);modifiedScanIndices.clear();showToast('快速盤點已完成','success');scheduleBackgroundSync();}
+    catch(e){showAlert(e.message)}finally{btn.disabled=false;btn.innerHTML=old;saveWorkDraft();renderWorkflowNotice();}
+}
 
 async function startStocktakeWorkflow(){if(!(await ensureLiveInventoryReady()))return;if(!canOperateUi()){showAlert('目前帳號為唯讀');return;}const locationId=getSelectedLocationId('stocktakeLocation');if(!locationId){showAlert('請選擇盤點儲位');return;}const btn=document.getElementById('stocktakeStartBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i>建立盤點單';try{const res=await postApi({action:'startStocktakeSession',locationId,blindMode:document.getElementById('stocktakeBlindMode').checked,note:document.getElementById('stocktakeSessionNote').value.trim()});currentStocktakeSession=res.session;renderStocktakeSession();showToast('✅ 盤點工作階段已建立','success');}catch(e){showAlert('無法開始盤點：'+e.message)}finally{btn.disabled=false;btn.textContent='開始今日盤點';}}
 function renderStocktakeSession(){const start=document.getElementById('stocktakeStartPanel'),active=document.getElementById('stocktakeActivePanel'),badge=document.getElementById('stocktakeSessionBadge');if(!currentStocktakeSession||currentStocktakeSession.status!=='open'){start.classList.remove('hidden');active.classList.add('hidden');badge.textContent='未開始';selectedStocktakeLine=null;return;}start.classList.add('hidden');active.classList.remove('hidden');badge.textContent=`進行中｜${currentStocktakeSession.location_name}${currentStocktakeSession.blind_mode?'｜盲盤':''}`;const lines=currentStocktakeSession.lines||[],done=lines.filter(x=>x.status==='counted'),matches=done.filter(x=>Number(x.difference)===0).length;document.getElementById('stocktakeProgress').textContent=`${done.length} / ${lines.length}`;document.getElementById('stocktakeMatchCount').textContent=matches;document.getElementById('stocktakeVarianceCount').textContent=done.length-matches;document.getElementById('stocktakeProgressBar').style.width=`${lines.length?Math.round(done.length/lines.length*100):100}%`;renderStocktakeChecklist();}
@@ -1408,7 +1484,25 @@ async function renderAdminInventory(){
       return `<section class="admin-item-v4 ${Number(m.is_active)!==1?'inactive':''}"><div class="admin-item-title"><b>${escapeHtmlClient(m.name||id)}</b><span>${escapeHtmlClient(id)}</span><button onclick="toggleItemActiveV4(decodeURIComponent('${k}'),${Number(m.is_active)!==1})" class="mini-btn ${Number(m.is_active)===1?'danger':'success'}">${Number(m.is_active)===1?'停用':'啟用'}</button></div><div class="admin-fields"><label>品名<input id="adm-name-${k}" value="${escapeHtmlClient(m.name||id)}"></label><label>分類<input id="adm-cat-${k}" value="${escapeHtmlClient(m.category||'')}"></label><label title="目前總量小於或等於此數量時顯示低庫存警示">安全庫存（警示線）<input id="adm-min-${k}" type="number" min="0" value="${Number(m.min_qty||0)}"></label><label title="補貨後希望恢復到的數量；0 代表由系統自動估算">目標庫存（補貨後）<input id="adm-target-${k}" type="number" min="0" value="${Number(m.target_qty||0)}"></label><label>效期預警天數<input id="adm-warning-${k}" type="number" min="0" max="3650" value="${Number(m.warning_days||30)}"></label><label>採購前置天數<input id="adm-lead-${k}" type="number" min="0" max="3650" value="${Number(m.lead_time_days||7)}"></label>${priceField}</div><button onclick="saveAdminItem(decodeURIComponent('${k}'))" class="v4-primary-btn">儲存品項主檔</button><div class="admin-batches">${[...batchMap.values()].map(r=>`<div class="admin-batch-row"><div class="batch-location-summary">${r.locations.map(l=>`<span class="location-chip">${escapeHtmlClient(l.location_name)} ${l.qty}</span>`).join('')}</div><input id="adm-lot-${r.batch_id}" value="${escapeHtmlClient(r.lot)}" placeholder="LOT"><input id="adm-exp-${r.batch_id}" type="date" value="${escapeHtmlClient(r.expiry)}"><input id="adm-note-${r.batch_id}" value="${escapeHtmlClient(r.batch_note||'')}" placeholder="批次備註"><span class="qty-readonly">總量 ${r.locations.reduce((s,x)=>s+Number(x.qty||0),0)}</span><button onclick="saveAdminBatch(${r.batch_id})" class="mini-btn primary">批次資料</button><button onclick="printInventoryLabel(${r.batch_id},${r.locations[0]?.location_id||0})" class="mini-btn"><i class="fas fa-qrcode mr-1"></i>列印 QR Code</button></div>`).join('')||'<div class="v4-muted">尚無批次</div>'}</div></section>`;}).join('')||'<div class="v4-empty">尚無品項</div>');
     }catch(e){box.innerHTML=`<div class="v4-error">${escapeHtmlClient(e.message)}</div>`;}
 }
-async function switchTab(tab,sourceBtn=null){if(tab!=='scanner'&&!document.getElementById('scannerView').classList.contains('hidden')){const pending=[...scanSessionCounts.inbound.values(),...scanSessionCounts.outbound.values()].reduce((sum,x)=>sum+x.count,0);if(pending){if(!confirm(`尚有 ${pending} 筆快速出入庫未確認。\n離開將取消暫存，且不會異動庫存。\n\n確定離開掃碼作業？`))return;scanSessionCounts.inbound.clear();scanSessionCounts.outbound.clear();renderScanSession();showToast('未確認的快速出入庫已取消，庫存未異動','error');}}if(tab==='admin'&&!canManageInventoryUi()){showAlert('權限不足');return;}if(['scanner','manual','stocktake'].includes(tab)&&!canOperateUi()){showAlert('目前帳號為唯讀，不能執行庫存作業');return;}if(homeQrCode){try{await toggleHomeScanner()}catch{}}if(html5QrCode){try{if(html5QrCode.isScanning)await html5QrCode.stop()}catch{}try{html5QrCode.clear()}catch{}html5QrCode=null;document.getElementById('scannerPlaceholder')?.classList.remove('hidden');document.getElementById('scanForm')?.classList.add('hidden');}if(tab!=='stocktake'&&stocktakeQrActive)try{await toggleStocktakeScanner()}catch{}document.querySelectorAll('#mainContent > div').forEach(d=>d.classList.add('hidden'));const view=document.getElementById(tab+'View');if(!view)return;view.classList.remove('hidden');document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active','text-blue-600','bg-blue-50'));if(sourceBtn)sourceBtn.classList.add('active','text-blue-600','bg-blue-50');if(tab==='dashboard'){filterItems();loadAnomalyCenter();}if(tab==='manual'){populateLocationSelectors();toggleManualMode();}if(tab==='scanner'){populateLocationSelectors();setScanMode(scanMode);}if(tab==='report')generateReport();if(tab==='stocktake'){populateLocationSelectors();await refreshStocktakeWorkflow();}if(tab==='admin')await renderAdminInventory();window.scrollTo(0,0);}
+async function switchTab(tab,sourceBtn=null){
+    if(tab==='admin'&&!canManageInventoryUi()){showAlert('權限不足');return;}
+    if(['scanner','manual','stocktake'].includes(tab)&&!canOperateUi()){showAlert('目前帳號為唯讀，不能執行庫存作業');return;}
+    if(writeInFlight){showAlert('作業正在確認，請稍候');return;}
+    saveWorkDraft();
+    if(homeQrCode)await toggleHomeScanner();
+    if(html5QrCode){isScanningActive=false;try{if(html5QrCode.isScanning)await html5QrCode.stop();html5QrCode.clear()}catch{}html5QrCode=null;document.getElementById('scannerPlaceholder').classList.remove('hidden');}
+    if(tab!=='stocktake'&&stocktakeQrActive)try{await toggleStocktakeScanner()}catch{}
+    const view=document.getElementById(tab+'View');if(!view)return;
+    document.querySelectorAll('#mainContent > div').forEach(d=>d.classList.add('hidden'));view.classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(x=>{const active=x.getAttribute('onclick')?.includes(`'${tab}'`);for(const cls of ['active','text-blue-600','bg-blue-50'])x.classList.toggle(cls,!!active);});
+    if(tab==='dashboard'){filterItems();loadAnomalyCenter();}
+    if(tab==='manual')populateLocationSelectors();
+    if(tab==='scanner'){populateLocationSelectors();setScanMode(scanMode);}
+    if(tab==='report')generateReport();
+    if(tab==='stocktake'){populateLocationSelectors();await refreshStocktakeWorkflow();}
+    if(tab==='admin')await renderAdminInventory();
+    saveWorkDraft();renderWorkflowNotice();window.scrollTo(0,0);
+}
 
 
 let lastClientLogAt = 0;
@@ -1421,5 +1515,6 @@ window.addEventListener('error', e => reportClientError('CLIENT_JS_ERROR', e.mes
 window.addEventListener('unhandledrejection', e => reportClientError('CLIENT_PROMISE_REJECTION', e.reason?.message||String(e.reason||'Promise rejection')));
 
 </script>
+<script src="./workflow.js"></script>
 </body>
 </html>

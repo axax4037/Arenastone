@@ -1834,7 +1834,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{overflow-x:hidden}
   header h1 i{margin-right:.25rem!important}
   header>div>div{gap:.25rem!important}
   #currentUserTag{max-width:82px}
-  #sessionTimer{display:none!important}
+  #sessionTimer{display:inline-flex;font-size:.58rem}
   .dashboard-location-heading small{white-space:normal}
   .inventory-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .inventory-kpis>div:last-child{grid-column:1/-1}
@@ -1855,3 +1855,5 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{overflow-x:hidden}
 
 @media(max-width:900px){.location-row.management-row,.user-row.management-row{grid-template-columns:minmax(170px,.8fr) minmax(220px,1.5fr) auto auto;gap:.55rem}}
 @media(max-width:720px){.location-row.management-row,.user-row.management-row{grid-template-columns:1fr;gap:.6rem}.management-summary{border-right:0;border-bottom:1px solid #e2e8f0;padding:0 0 .6rem}.management-row>.mini-btn{width:100%}.inventory-policy-help,.scan-settings-grid,.scan-session-items{grid-template-columns:1fr}.inventory-policy-help>small{grid-column:1}.scan-settings-grid .v4-primary-btn{width:100%}.scan-session-head{align-items:flex-start;flex-direction:column}.scan-session-head .mini-btn{width:100%}}
+
+.workflow-notice{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;padding:.75rem;border:1px solid #fcd34d;border-radius:.75rem;background:#fffbeb;color:#92400e;font-size:.8rem;line-height:1.5}.workflow-notice .mini-btn{min-height:40px}#homeBatchPicker label{display:block;font-size:.8rem;margin-bottom:.4rem}
