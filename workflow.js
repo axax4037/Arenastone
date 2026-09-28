@@ -1,12 +1,14 @@
 // Per-tab, per-account drafts. Nothing here is automatically submitted on restore.
 const WORK_DRAFT_PREFIX = 'SHANSHI_WORK_V1:';
+// Unconfirmed mutation journal must survive a full tab/PWA restart so the same requestId can be retried.
+const PENDING_WRITE_PREFIX = 'SHANSHI_PENDING_WRITE_V1:';
 const inlineDrafts = new Map();
 const homeBatchChoices = new Map();
 const draftFieldIds = ['scanLocation','scanName','scanLot','scanExpiry','scanPrice','scanQty','scanNote','inboundBatchSelect',
     'manualType','manualLocation','manualId','manualName','manualLot','manualExpiry','manualPrice','manualQty','manualNote',
     'manualUseFefo','manualBatchSelect','stocktakeLocation','stocktakeBlindMode','stocktakeSessionNote'];
-let draftAccount = '', pendingWrite = null, writeInFlight = false, draftStorageFailed = false;
-let homeScanGate = { code: '', misses: 0 }, homePendingCode = '', waitingRegistration = null;
+let draftAccount = '', pendingWrite = null, writeInFlight = false, draftStorageFailed = false, pendingWriteRecoveredFromJournal = false;
+let homeScanGate = { codes: new Set(), misses: 0 }, homePendingCode = '', waitingRegistration = null;
 let restoredStocktakeDraft = null, restoredTab = '', sessionWarningShown = false;
 
 function captureWorkDraft() {
@@ -26,10 +28,38 @@ function captureWorkDraft() {
         tab: [...document.querySelectorAll('#mainContent > div')].find(el => !el.classList.contains('hidden'))?.id.replace('View','') || 'dashboard'};
 }
 
+function pendingWriteStorageKey(account, requestId) {
+    return `${PENDING_WRITE_PREFIX}${account}:${requestId}`;
+}
+
+function listPersistedPendingWrites(account) {
+    const prefix = `${PENDING_WRITE_PREFIX}${account}:`, writes = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key?.startsWith(prefix)) continue;
+        try {
+            const write = JSON.parse(localStorage.getItem(key) || 'null');
+            if (write?.payload?._requestId) writes.push(write);
+        } catch {}
+    }
+    return writes.sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || '')));
+}
+
+function persistPendingWrite(write, account = draftAccount) {
+    if (!write?.payload?._requestId || !account) return;
+    localStorage.setItem(pendingWriteStorageKey(account, write.payload._requestId), JSON.stringify(write));
+}
+
+function removePersistedPendingWrite(write, account = draftAccount) {
+    if (!write?.payload?._requestId || !account) return;
+    localStorage.removeItem(pendingWriteStorageKey(account, write.payload._requestId));
+}
+
 function saveWorkDraft(required = false) {
     if (!draftAccount) { if (required) throw new Error('請重新登入後再送出'); return false; }
     try {
         sessionStorage.setItem(WORK_DRAFT_PREFIX + draftAccount, JSON.stringify(captureWorkDraft()));
+        if (pendingWrite) persistPendingWrite(pendingWrite);
         draftStorageFailed = false;
         return true;
     } catch {
@@ -42,16 +72,29 @@ function saveWorkDraft(required = false) {
 
 function restoreWorkDraft(account) {
     draftAccount = account;
-    let draft;
-    try { draft = JSON.parse(sessionStorage.getItem(WORK_DRAFT_PREFIX + account) || 'null'); } catch { return; }
-    if (!draft) return;
+    let draft = null, persistedWrite = null;
+    try { draft = JSON.parse(sessionStorage.getItem(WORK_DRAFT_PREFIX + account) || 'null'); } catch {}
+    try {
+        const sessionWrite = draft?.pendingWrite?.payload?._requestId ? draft.pendingWrite : null;
+        if (sessionWrite) {
+            const saved = JSON.parse(localStorage.getItem(pendingWriteStorageKey(account, sessionWrite.payload._requestId)) || 'null');
+            persistedWrite = saved?.payload?._requestId ? saved : sessionWrite;
+        } else persistedWrite = listPersistedPendingWrites(account)[0] || null;
+    } catch {}
+    const sessionWrite = draft?.pendingWrite?.payload?._requestId ? draft.pendingWrite : null;
+    pendingWrite = sessionWrite || persistedWrite;
+    pendingWriteRecoveredFromJournal = !!pendingWrite && !sessionWrite;
+    if (pendingWrite) {
+        try { persistPendingWrite(pendingWrite, account); }
+        catch { draftStorageFailed = true; }
+    }
+    if (!draft) { renderWorkflowNotice(); return; }
     inlineDrafts.clear();
     for (const [key, value] of draft.inline || []) inlineDrafts.set(key, value);
     for (const mode of ['inbound','outbound']) {
         scanSessionCounts[mode].clear();
         for (const [key, value] of draft[mode] || []) scanSessionCounts[mode].set(key, value);
     }
-    pendingWrite = draft.pendingWrite || null;
     scannedData = draft.scannedData || null;
     setScanMode(draft.scanMode || 'inbound');
     if (scannedData && scanMode === 'inbound') populateInboundBatches(scannedData);
@@ -114,14 +157,15 @@ function restoreInlineInputs() {
 }
 
 function acceptHomeCode(code) {
-    if (!code || code === homeScanGate.code || homePendingCode) { homeScanGate.misses = 0; return false; }
-    homeScanGate = {code, misses: 0};
+    if (!code || homeScanGate.codes.has(code) || homePendingCode) { homeScanGate.misses = 0; return false; }
+    homeScanGate.codes.add(code);
+    homeScanGate.misses = 0;
     return true;
 }
 
 function homeScanMiss() {
-    // Require consecutive missed frames before counting the same physical barcode again.
-    if (homeScanGate.code && ++homeScanGate.misses >= 12) homeScanGate = {code: '', misses: 0};
+    // Keep every barcode seen in the current camera view blocked until the view is clear.
+    if (homeScanGate.codes.size && ++homeScanGate.misses >= 12) homeScanGate = {codes: new Set(), misses: 0};
 }
 
 function handleHomeScan(text) {

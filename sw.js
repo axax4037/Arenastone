@@ -1,9 +1,9 @@
-const CACHE_NAME = 'arenastone-static-v20260928-workflow-safety-1';
+const CACHE_NAME = 'arenastone-static-v20260928-workflow-safety-3';
 const CORE_ASSETS = [
   './',
   './index.html',
-  './app.css',
-  './workflow.js',
+  './app.css?v=20260928-safety3',
+  './workflow.js?v=20260928-safety3',
   './manifest.webmanifest',
   './favicon.ico',
   './favicon-32.png',
@@ -52,11 +52,11 @@ self.addEventListener('fetch', event => {
     event.waitUntil(update.then(() => undefined));
     event.respondWith((async () => {
       const online = await update;
-      if (online) return online;
+      if (online?.ok) return online;
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match('./index.html') || await cache.match(request);
       if (cached) return cached;
-      return Response.error();
+      return online || Response.error();
     })());
     return;
   }
@@ -67,22 +67,19 @@ self.addEventListener('fetch', event => {
   });
   if (!isCoreAsset) return;
 
-  const update = fetch(request)
-    .then(async response => {
-      if (response?.ok) {
-        const cache = await caches.open(CACHE_NAME);
-        await cache.put(request, response.clone());
-      }
-      return response;
-    })
-    .catch(() => null);
-
-  event.waitUntil(update.then(() => undefined));
   event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    const online = await update;
-    return online || Response.error();
+    try {
+      const online = await fetch(request);
+      if (online?.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, online.clone());
+        return online;
+      }
+      const cache = await caches.open(CACHE_NAME);
+      return await cache.match(request) || online || Response.error();
+    } catch {
+      const cache = await caches.open(CACHE_NAME);
+      return await cache.match(request) || Response.error();
+    }
   })());
 });

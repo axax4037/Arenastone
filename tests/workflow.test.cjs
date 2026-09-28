@@ -33,7 +33,7 @@ const server = http.createServer((req,res) => {
         let loseResponse = false, rejectWrite = false, sessionFixture = null;
         page.on('pageerror', e => {errors.push(e.message);console.error('PAGE ERROR:',e.message);});
         page.on('dialog', dialog => dialog.accept());
-        await page.route('https://**/*', async route => {
+        await context.route('https://**/*', async route => {
             const request = route.request(), url = new URL(request.url());
             if (!url.hostname.includes('shanshi-inventory-api')) return route.fulfill({status:200,body:''});
             let body = {success:true};
@@ -71,6 +71,10 @@ const server = http.createServer((req,res) => {
         assert.equal(await page.evaluate(() => inlineDrafts.get('B20|||L1').qty),'1');
         await page.evaluate(() => {for(let n=0;n<40;n++)handleHomeScan('ITEM-A');});
         assert.equal(await page.evaluate(() => inlineDrafts.get('B20|||L1').qty),'1');
+        await page.evaluate(() => {handleHomeScan('ITEM-B');handleHomeScan('ITEM-A');handleHomeScan('ITEM-B');});
+        assert.equal(await page.evaluate(() => inlineDrafts.get('B20|||L1').qty),'1');
+        assert.equal(await page.evaluate(() => inlineDrafts.get('B30|||L1').qty),'1');
+        await page.evaluate(() => {inlineDrafts.delete('B30|||L1');saveWorkDraft();});
         await page.evaluate(() => {for(let n=0;n<12;n++)homeScanMiss();handleHomeScan('ITEM-A');});
         assert.equal(await page.evaluate(() => inlineDrafts.get('B20|||L1').qty),'2');
 
@@ -115,6 +119,13 @@ const server = http.createServer((req,res) => {
         await page.waitForFunction(() => document.getElementById('scanLot').value === 'NEW-LOT');
         assert.equal(await page.inputValue('#scanQty'),'5');
 
+        // Keep a second tab open before the first write to verify cross-tab coordination.
+        const secondPage = await context.newPage();
+        secondPage.on('dialog', dialog => dialog.accept());
+        await secondPage.goto(`http://127.0.0.1:${server.address().port}`);
+        await secondPage.waitForFunction(() => typeof hasLiveInventory !== 'undefined' && hasLiveInventory && draftAccount === 'test');
+        assert.equal(await secondPage.evaluate(() => pendingWrite),null);
+
         // Simulate a committed write with a lost response, reload, and retry the exact ID/body.
         loseResponse = true;
         await page.evaluate(() => submitScan());
@@ -123,7 +134,25 @@ const server = http.createServer((req,res) => {
         assert.doesNotMatch(await page.textContent('#alertMessage'),/庫存未異動/);
         const requestId = requests[0]._requestId;
         assert.equal(committed.size,1);
+        assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem(pendingWriteStorageKey(draftAccount,pendingWrite.payload._requestId))).payload._requestId),requestId);
         await page.evaluate(() => closeAlert());
+
+        // A pre-existing second tab must notice the first tab's journal before creating a new inventory write.
+        const requestsBeforeSecondTab = requests.length;
+        const secondTabBlocked = await secondPage.evaluate(async () => {try{await postApi({action:'fefoIssue',id:'ITEM-B',qty:1,locationId:1});return '';}catch(e){return e.message;}});
+        assert.match(secondTabBlocked,/尚未確認/);
+        assert.equal(requests.length,requestsBeforeSecondTab);
+        assert.equal(await secondPage.evaluate(() => pendingWrite.payload._requestId),requestId);
+
+        // Per-request keys ensure an exceptional simultaneous race cannot overwrite another journal.
+        await page.evaluate(() => persistPendingWrite({payload:{_requestId:'synthetic-second'},context:null,createdAt:new Date().toISOString()},'test'));
+        assert.equal(await page.evaluate(() => listPersistedPendingWrites('test').length),2);
+        await page.evaluate(() => removePersistedPendingWrite({payload:{_requestId:'synthetic-second'}},'test'));
+        assert.equal(await page.evaluate(() => listPersistedPendingWrites('test').length),1);
+        await secondPage.close();
+
+        // A full tab/PWA restart loses sessionStorage. The unresolved mutation journal must still survive.
+        await page.evaluate(() => sessionStorage.clear());
         await page.reload();
         await page.waitForFunction(() => !!pendingWrite);
         assert.equal(await page.evaluate(() => pendingWrite.payload._requestId),requestId);
@@ -133,10 +162,11 @@ const server = http.createServer((req,res) => {
         loseResponse = false;
         await page.evaluate(() => retryPendingWrite());
         assert.equal(committed.size,1);
-        assert.ok(requests.every(x => x._requestId === requestId));
+        assert.ok(requests.filter(x => x._requestId === requestId).length >= 2);
         assert.equal(await page.evaluate(() => pendingWrite),null);
         assert.equal(await page.evaluate(() => document.getElementById('scanForm').classList.contains('hidden')),true);
         assert.equal(await page.evaluate(() => JSON.parse(sessionStorage.getItem(WORK_DRAFT_PREFIX+draftAccount)).pendingWrite),null);
+        assert.equal(await page.evaluate(id => localStorage.getItem(pendingWriteStorageKey('test',id)),requestId),null);
         await page.evaluate(() => closeAlert());
 
         // A definite validation rejection allows correction; it does not strand the write.
@@ -201,7 +231,7 @@ const server = http.createServer((req,res) => {
         // Updates cannot reload an active draft. The service worker never navigates clients.
         const sw = fs.readFileSync(path.join(root,'sw.js'),'utf8');
         assert.ok(!sw.includes('client.navigate'));
-        assert.ok(sw.includes("'./workflow.js'"));
+        assert.ok(sw.includes("'./workflow.js?v=20260928-safety3'"));
         await page.evaluate(() => {window.updateCalls=0;waitingRegistration={waiting:{postMessage(){window.updateCalls++}}};applyWaitingUpdate();});
         assert.equal(await page.evaluate(() => window.updateCalls),0);
         assert.deepEqual(errors,[]);
