@@ -270,7 +270,30 @@ async function retryPendingWrite() {
         const res = await postApi(pendingWrite.payload, {draftContext: pendingWrite.context, timeoutMs: 45000});
         applyMutationResponse(res);
         showAlert('已確認原交易成功，庫存已同步。');
-    } catch (e) { showAlert(e.message); }
+    } catch (e) {
+        // A database commit can survive even when its stored HTTP response did not.
+        const write = pendingWrite, owner = draftAccount;
+        if (write && CURRENT_SESSION_TOKEN) {
+            try {
+                const result = await getApiResource('transactionResult', {requestId: write.payload._requestId});
+                if (['committed','completed'].includes(result.state) && owner === draftAccount) {
+                    const snapshot = await fetchInventorySnapshot();
+                    if (owner !== draftAccount) throw new Error('登入狀態已變更');
+                    applyInventoryData(snapshot);
+                    completeDraftWrite(write, {});
+                    removePersistedPendingWrite(write, owner);
+                    pendingWrite = listPersistedPendingWrites(owner)[0] || null;
+                    pendingWriteRecoveredFromJournal = !!pendingWrite;
+                    saveWorkDraft();
+                    if (write.payload.action === 'stocktakeRecord') await refreshStocktakeWorkflow();
+                    renderWorkflowNotice();
+                    showAlert('已由交易紀錄確認原作業入帳，庫存已同步。');
+                    return;
+                }
+            } catch {}
+        }
+        showAlert(e.message);
+    }
 }
 
 function restoreStocktakeInput() {

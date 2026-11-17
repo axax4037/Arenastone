@@ -1,0 +1,24 @@
+{
+  "name": "shanshi-inventory-api",
+  "main": "src/index.js",
+  "workers_dev": true,
+  "preview_urls": true,
+  "compatibility_date": "2026-08-20",
+  "triggers": {
+    "crons": [
+      "5 0 * * *"
+    ]
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "https://axax4037.github.io,http://localhost:8000,http://127.0.0.1:8000,http://localhost:5500,http://127.0.0.1:5500",
+    "APP_NAME": "山石診所智慧庫存",
+    "D1_TIME_TRAVEL_RETENTION_DAYS": "7",
+    "SESSION_MINUTES": "30"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_id": "9f505be7-e22a-419a-8d37-16442f587ab8"
+    }
+  ]
+}

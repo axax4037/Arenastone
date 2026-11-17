@@ -250,9 +250,22 @@ const server = http.createServer((req,res) => {
         // Updates cannot reload an active draft. The service worker never navigates clients.
         const sw = fs.readFileSync(path.join(root,'sw.js'),'utf8');
         assert.ok(!sw.includes('client.navigate'));
-        assert.ok(sw.includes("'./workflow.js?v=20260928-safety3'"));
+        assert.ok(sw.includes("'./workflow.js?v=20261117-safety4'"));
         await page.evaluate(() => {window.updateCalls=0;waitingRegistration={waiting:{postMessage(){window.updateCalls++}}};applyWaitingUpdate();});
         assert.equal(await page.evaluate(() => window.updateCalls),0);
+        await page.evaluate(() => {
+            allItems=Array.from({length:105},(_,i)=>normalizeInventoryItem({id:`PAGE-${i}`,name:`分頁品項 ${i}`,batch_id:1000+i,location_id:1,qty:1,is_active:1}));
+            rebuildItemIndexes();inventoryPage=1;renderItems(allItems);
+        });
+        assert.equal(await page.locator('.inventory-card-v4').count(),50);
+        await page.evaluate(()=>{inventoryPage=3;renderItems(allItems);});
+        assert.equal(await page.locator('.inventory-card-v4').count(),5);
+        await page.evaluate(()=>{draftAccount='cache-test';saveInventoryCache();});
+        const cached=await page.evaluate(()=>JSON.parse(localStorage.getItem(INVENTORY_CACHE_KEY+':cache-test')));
+        assert.equal(cached.items.length,105);
+        assert.ok(cached.items.every(item=>!('price' in item)&&!('default_price' in item)));
+        await page.evaluate(()=>{draftAccount='another-account';allItems=[];hydrateInventoryCache();});
+        assert.equal(await page.evaluate(()=>allItems.length),0);
         assert.deepEqual(errors,[]);
         console.log('PASS: duplicate scans, batch selection, autofill, draft sync/reload/session expiry, inbound/outbound idempotent retry, stocktake draft, storage failure, rejection, update guard; mobile 390px.');
         await context.close();

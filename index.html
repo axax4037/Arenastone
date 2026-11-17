@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>山石診所 | 智慧庫存管理系統</title>
-    <link rel="stylesheet" href="./app.css?v=20260928-safety3">
+    <link rel="stylesheet" href="./app.css?v=20261117-safety4">
     <link rel="manifest" href="./manifest.webmanifest">
     <meta name="theme-color" content="#0f172a">
     <meta name="mobile-web-app-capable" content="yes">
@@ -402,9 +402,11 @@ function scanModeHintHtml(mode){return mode==='inbound'?`<i class="fas fa-bolt m
 
 function saveInventoryCache() {
     try {
-        localStorage.setItem(INVENTORY_CACHE_KEY, JSON.stringify({
+        if (!draftAccount) return;
+        localStorage.removeItem(INVENTORY_CACHE_KEY);
+        localStorage.setItem(INVENTORY_CACHE_KEY + ':' + encodeURIComponent(draftAccount), JSON.stringify({
             savedAt: Date.now(),
-            items: allItems,
+            items: allItems.map(({price, default_price, ...item}) => item),
             locations: allLocations,
             settings: { continuousScanDelaySeconds }
         }));
@@ -413,7 +415,7 @@ function saveInventoryCache() {
 
 function hydrateInventoryCache() {
     try {
-        const raw = localStorage.getItem(INVENTORY_CACHE_KEY);
+        const raw = localStorage.getItem(INVENTORY_CACHE_KEY + ':' + encodeURIComponent(draftAccount));
         if (!raw) return false;
         const cached = JSON.parse(raw);
         if (!cached || !Array.isArray(cached.items) || cached.items.length === 0) return false;
@@ -666,7 +668,7 @@ async function postApi(payload, options = {}) {
         const res = await parseApiJson(response);
         if (!res || res.success !== true) {
             const error = new Error(res?.error || res?.message || '後端處理失敗');
-            error.rejected = res?.success === false;
+            error.rejected = res?.success === false && !res?.pending;
             throw error;
         }
         if (tracked) {
@@ -1355,7 +1357,7 @@ function setSyncState(state){
 /* superseded updateRoleUi removed in Commercial v4 cleanup */
 
 async function handlePortalLogin(){
-    const acc=document.getElementById('loginAccount').value.trim(),pwd=document.getElementById('loginPassword').value.trim(),btn=document.getElementById('loginBtn');if(!acc||!pwd){showAlert('請輸入代號與密碼！');return;}
+    const acc=document.getElementById('loginAccount').value.trim(),pwd=document.getElementById('loginPassword').value,btn=document.getElementById('loginBtn');if(!acc||!pwd){showAlert('請輸入代號與密碼！');return;}
     btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin mr-2"></i>連線驗證中...';
     try{const challenge=await postApi({action:'loginChallenge',account:acc}),passwordHash=await derivePasswordHash(pwd,challenge.salt,challenge.iterations),proof=await createLoginProof(passwordHash,challenge.challenge),res=await postApi({action:'login',account:acc,challengeId:challenge.challengeId,proof});CURRENT_USER_NAME=res.name;draftAccount=acc;CURRENT_USER_ROLE=res.role||'operator';CURRENT_SESSION_TOKEN=res.token||'';CURRENT_CAPABILITIES=res.capabilities||capabilityFallback(CURRENT_USER_ROLE);if(!CURRENT_SESSION_TOKEN)throw new Error('伺服器未回傳登入憑證');document.getElementById('currentUserTag').innerText=`👤 ${res.name}｜${res.roleLabel||CURRENT_CAPABILITIES.roleLabel}`;document.getElementById('loginPortal').classList.add('hidden');const now=Date.now();localStorage.setItem('SHANSHI_SESSION',JSON.stringify({account:acc,name:res.name,role:CURRENT_USER_ROLE,capabilities:CURRENT_CAPABILITIES,token:CURRENT_SESSION_TOKEN,timestamp:now,expiresAt:res.expiresAt||''}));updateRoleUi();startSessionTimer(now,res.expiresAt||'');hydrateInventoryCache();restoreWorkDraft(acc);await loadData();if(restoredTab)await switchTab(restoredTab);}
     catch(e){showAlert('🚨 登入失敗：\n'+e.message)}finally{btn.disabled=false;btn.innerText='登入';}
@@ -1365,7 +1367,7 @@ function checkLoginSession(){
 }
 function handleLogout(){
     saveWorkDraft();stopWorkCameras();draftAccount='';pendingWrite=null;inlineDrafts.clear();modifiedScanIndices.clear();restoredStocktakeDraft=null;restoredTab='';homePendingCode='';homeBatchChoices.clear();document.getElementById('scanForm').classList.add('hidden');for(const id of draftFieldIds){const el=document.getElementById(id);if(el&&el.tagName!=='SELECT'&&el.type!=='checkbox')el.value='';}
-    if(sessionInterval)clearInterval(sessionInterval);if(backgroundSyncTimer)clearTimeout(backgroundSyncTimer);continuousScanRestartToken++;scanSessionCounts.inbound.clear();scanSessionCounts.outbound.clear();renderScanSession();hasLiveInventory=false;inventorySyncPromise=null;document.getElementById('sessionTimer')?.classList.add('hidden');const token=CURRENT_SESSION_TOKEN;localStorage.removeItem('SHANSHI_SESSION');CURRENT_USER_NAME='';CURRENT_USER_ROLE='operator';CURRENT_CAPABILITIES=capabilityFallback('operator');CURRENT_SESSION_TOKEN='';currentStocktakeSession=null;selectedStocktakeLine=null;updateRoleUi();if(token&&API_URL)fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({action:'logout',_requestId:createRequestId()}),keepalive:true}).catch(()=>{});document.getElementById('currentUserTag').innerText='👤 未登入';document.getElementById('loginPortal').classList.remove('hidden');document.getElementById('loginAccount').value='';document.getElementById('loginPassword').value='';setSyncState('hidden');renderWorkflowNotice();
+    if(sessionInterval)clearInterval(sessionInterval);if(backgroundSyncTimer)clearTimeout(backgroundSyncTimer);continuousScanRestartToken++;scanSessionCounts.inbound.clear();scanSessionCounts.outbound.clear();renderScanSession();hasLiveInventory=false;inventorySyncPromise=null;document.getElementById('sessionTimer')?.classList.add('hidden');const token=CURRENT_SESSION_TOKEN;localStorage.removeItem('SHANSHI_SESSION');CURRENT_USER_NAME='';CURRENT_USER_ROLE='operator';CURRENT_CAPABILITIES=capabilityFallback('operator');CURRENT_SESSION_TOKEN='';allItems=[];allLocations=[];rebuildItemIndexes();document.getElementById('itemsList').innerHTML='';document.getElementById('adminContent').innerHTML='';document.getElementById('reportContent').innerHTML='';currentStocktakeSession=null;selectedStocktakeLine=null;updateRoleUi();if(token&&API_URL)fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`},body:JSON.stringify({action:'logout',_requestId:createRequestId()}),keepalive:true}).catch(()=>{});document.getElementById('currentUserTag').innerText='👤 未登入';document.getElementById('loginPortal').classList.remove('hidden');document.getElementById('loginAccount').value='';document.getElementById('loginPassword').value='';setSyncState('hidden');renderWorkflowNotice();
 }
 
 function updateDashboard(){
@@ -1375,16 +1377,20 @@ function updateDashboard(){
 }
 /* superseded filterItems removed in Commercial v4 cleanup */
 
+let inventoryPage=1,lastInventoryFilter='';
+function changeInventoryPage(delta){inventoryPage=Math.max(1,inventoryPage+delta);filterItems();document.getElementById('itemsList').scrollIntoView({block:'start'});}
 function renderItems(items){
     const box=document.getElementById('itemsList'),groups=new Map();items.forEach(i=>{if(!groups.has(i.id))groups.set(i.id,[]);groups.get(i.id).push(i)});if(!groups.size){box.innerHTML='<div class="v4-empty">目前無符合條件的庫存資料</div>';return;}
     const today=taipeiYmd(),weekAgo=taipeiYmd(new Date(Date.now()-7*86400000));let html='';
-    groups.forEach((rows,id)=>{rows.sort((a,b)=>String(a.location_name).localeCompare(String(b.location_name),'zh-Hant')||fefoSortValue(a).localeCompare(fefoSortValue(b)));const base=rows[0],total=rows.reduce((s,x)=>s+Number(x.qty||0),0),latest=rows.reduce((v,x)=>String(x.last_stocktake||'')>v?String(x.last_stocktake||''):v,'');const low=total<=Number(base.min_qty||0),expired=rows.some(x=>x.qty>0&&x.expiry&&x.expiry<today),warn=rows.some(x=>{if(!x.expiry||x.qty<=0||x.expiry<today)return false;const d=new Date(today+'T00:00:00+08:00');d.setDate(d.getDate()+Number(x.warning_days||30));return x.expiry<=taipeiYmd(d)}),overdue=!latest||latest.slice(0,10)<weekAgo;
+    const pages=Math.max(1,Math.ceil(groups.size/50));inventoryPage=Math.min(inventoryPage,pages);
+    const visibleGroups=new Map([...groups].slice((inventoryPage-1)*50,inventoryPage*50));
+    visibleGroups.forEach((rows,id)=>{rows.sort((a,b)=>String(a.location_name).localeCompare(String(b.location_name),'zh-Hant')||fefoSortValue(a).localeCompare(fefoSortValue(b)));const base=rows[0],total=rows.reduce((s,x)=>s+Number(x.qty||0),0),latest=rows.reduce((v,x)=>String(x.last_stocktake||'')>v?String(x.last_stocktake||''):v,'');const low=total<=Number(base.min_qty||0),expired=rows.some(x=>x.qty>0&&x.expiry&&x.expiry<today),warn=rows.some(x=>{if(!x.expiry||x.qty<=0||x.expiry<today)return false;const d=new Date(today+'T00:00:00+08:00');d.setDate(d.getDate()+Number(x.warning_days||30));return x.expiry<=taipeiYmd(d)}),overdue=!latest||latest.slice(0,10)<weekAgo;
         const chips=[low?'<span class="status-chip status-danger">低庫存</span>':'',expired?'<span class="status-chip status-danger">已過期</span>':warn?'<span class="status-chip status-warning">效期預警</span>':'',overdue?'<span class="status-chip status-warning">待盤點</span>':''].filter(Boolean).join('');
         const fefoByLocation=new Set();for(const x of rows){if(x.qty>0&&!x.expired&&!fefoByLocation.has(x.location_id))fefoByLocation.add(x.location_id);}
         const seenFefo=new Set();
         html+=`<article class="inventory-card-v4"><div class="inventory-card-head"><div><h3>${escapeHtmlClient(base.name)}</h3><div class="v4-mono">ID ${escapeHtmlClient(id)}${base.category?` · ${escapeHtmlClient(base.category)}`:''}</div></div><div class="status-wrap">${chips}</div></div><div class="inventory-kpis"><div><span>總庫存</span><b class="${low?'danger':''}">${total}</b></div><div title="安全庫存是低庫存警示線；目標庫存是補貨後希望達到的數量"><span>安全庫存 / 目標</span><b>${base.min_qty} / ${base.target_qty||'-'}</b></div><div><span>最後盤點</span><b class="small">${latest?escapeHtmlClient(formatToYYYYMMDDHHMM(latest)):'尚未盤點'}</b></div></div><div class="batch-list-v4">`;
         for(const r of rows){const idx=itemIndexes.sourceIndexByBatch.get(getBatchIndexKey(r))??-1;const isFefo=r.qty>0&&!r.expired&&!seenFefo.has(r.location_id);if(isFefo)seenFefo.add(r.location_id);html+=`<div id="inline-row-${idx}" class="batch-row-v4"><div class="batch-main"><div class="batch-tags"><span class="location-chip"><i class="fas fa-warehouse"></i>${escapeHtmlClient(r.location_name||'未指定')}</span>${isFefo?'<span class="fefo-chip">FEFO</span>':''}${r.expired?'<span class="expired-chip">已過期</span>':''}</div><div><b>效期 ${escapeHtmlClient(formatToYYYYMMDD(r.expiry))}</b> · LOT <span class="v4-mono">${escapeHtmlClient(cleanLotString(r.lot))}</span> · <b>${r.qty}</b> 件</div>${r.note?`<div class="batch-note"><i class="fas fa-sticky-note mr-1"></i><strong>入庫備註：</strong>${escapeHtmlClient(r.note)}</div>`:''}</div><div class="batch-actions">${canOperateUi()?`<button onclick="startInlineStocktake(${idx},false)" class="mini-btn primary">快速盤</button>`:''}</div><div id="inline-input-panel-${idx}" class="hidden inline-stocktake-v4"><span>實盤</span><input type="number" min="0" id="inline-qty-${idx}" value="${r.qty}"><button id="inline-save-btn-${idx}" onclick="submitCardStocktake(${idx})" class="mini-btn success">儲存</button><button id="inline-end-btn-${idx}" onclick="endInlineStocktake(${idx})" class="mini-btn">取消</button><button id="inline-dec-btn-${idx}" onclick="decrementInlineQty(${idx})" class="hidden">-1</button><span id="action-trigger-box-${idx}" class="hidden"></span></div></div>`;}html+='</div></article>';
-    });box.innerHTML=html;restoreInlineInputs();
+    });html+=`<div class="inventory-pagination"><button class="mini-btn" onclick="changeInventoryPage(-1)" ${inventoryPage===1?'disabled':''}>上一頁</button><span>第 ${inventoryPage} / ${pages} 頁，共 ${groups.size} 品項</span><button class="mini-btn" onclick="changeInventoryPage(1)" ${inventoryPage===pages?'disabled':''}>下一頁</button></div>`;box.innerHTML=html;restoreInlineInputs();
 }
 function startInlineStocktake(index,isBarcodeScan=false){
     if(!canOperateUi()){showAlert('目前帳號為唯讀，不能執行盤點');return;}
@@ -1496,6 +1502,7 @@ function updateRoleUi(){
     const badge=document.getElementById('adminRoleBadge');if(badge)badge.textContent=CURRENT_CAPABILITIES.roleLabel||CURRENT_USER_ROLE;
 }
 function filterItems(){
+    const signature=JSON.stringify(['searchInput','categoryFilter','statusFilter','lowStockOnly','dashboardLocationFilter'].map(id=>{const el=document.getElementById(id);return el.type==='checkbox'?el.checked:el.value}))+currentAnomalyFilter;if(signature!==lastInventoryFilter){inventoryPage=1;lastInventoryFilter=signature;}
     const search=(document.getElementById('searchInput')?.value||'').toLowerCase().trim(),category=document.getElementById('categoryFilter')?.value||'',status=document.getElementById('statusFilter')?.value||'',lowOnly=!!document.getElementById('lowStockOnly')?.checked,today=taipeiYmd(),weekAgo=taipeiYmd(new Date(Date.now()-7*86400000)),scope=scopedInventoryItems(),totals=new Map();scope.forEach(i=>totals.set(i.id,(totals.get(i.id)||0)+Number(i.qty||0)));
     filteredItems=scope.filter(i=>{const text=[i.name,i.id,i.lot,i.note,i.location_name,i.location_code].join(' ').toLowerCase();if(search&&!text.includes(search))return false;if(category&&i.category!==category)return false;if(status==='today'&&!(i.last_stocktake&&i.last_stocktake.slice(0,10)>=today))return false;if(status==='week'&&!(i.last_stocktake&&i.last_stocktake.slice(0,10)>=weekAgo&&i.last_stocktake.slice(0,10)<today))return false;if(status==='overdue'&&i.last_stocktake&&i.last_stocktake.slice(0,10)>=weekAgo)return false;if(lowOnly&&(totals.get(i.id)||0)>Number(i.min_qty||0))return false;if(currentAnomalyFilter==='expired'&&!(i.qty>0&&i.expiry&&i.expiry<today))return false;if(currentAnomalyFilter==='expiring'){const d=new Date(today+'T00:00:00+08:00');d.setDate(d.getDate()+Number(i.warning_days||30));if(!(i.qty>0&&i.expiry&&i.expiry>=today&&i.expiry<=taipeiYmd(d)))return false;}return true;});renderItems(filteredItems);
 }
@@ -1540,6 +1547,6 @@ window.addEventListener('error', e => reportClientError('CLIENT_JS_ERROR', e.mes
 window.addEventListener('unhandledrejection', e => reportClientError('CLIENT_PROMISE_REJECTION', e.reason?.message||String(e.reason||'Promise rejection')));
 
 </script>
-<script src="./workflow.js?v=20260928-safety3"></script>
+<script src="./workflow.js?v=20261117-safety4"></script>
 </body>
 </html>

@@ -1,0 +1,12 @@
+{
+  "name": "arenastone-inventory",
+  "private": true,
+  "version": "4.1.0",
+  "scripts": {
+    "test": "node tests/workflow.test.cjs && node --test tests/api.test.cjs",
+    "dev:api": "wrangler dev --config shanshi-inventory-api/wrangler.jsonc",
+    "check:deploy": "wrangler deploy --dry-run --config shanshi-inventory-api/wrangler.jsonc",
+    "deploy:api": "wrangler deploy --config shanshi-inventory-api/wrangler.jsonc"
+  },
+  "devDependencies": {"playwright": "1.56.1", "wrangler": "4.163.0"}
+}

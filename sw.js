@@ -1,9 +1,9 @@
-const CACHE_NAME = 'arenastone-static-v20260928-workflow-safety-3';
+const CACHE_NAME = 'arenastone-static-v20261117-workflow-safety-4';
 const CORE_ASSETS = [
   './',
   './index.html',
-  './app.css?v=20260928-safety3',
-  './workflow.js?v=20260928-safety3',
+  './app.css?v=20261117-safety4',
+  './workflow.js?v=20261117-safety4',
   './manifest.webmanifest',
   './favicon.ico',
   './favicon-32.png',

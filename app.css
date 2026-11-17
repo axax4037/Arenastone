@@ -1857,3 +1857,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}body{overflow-x:hidden}
 @media(max-width:720px){.location-row.management-row,.user-row.management-row{grid-template-columns:1fr;gap:.6rem}.management-summary{border-right:0;border-bottom:1px solid #e2e8f0;padding:0 0 .6rem}.management-row>.mini-btn{width:100%}.inventory-policy-help,.scan-settings-grid,.scan-session-items{grid-template-columns:1fr}.inventory-policy-help>small{grid-column:1}.scan-settings-grid .v4-primary-btn{width:100%}.scan-session-head{align-items:flex-start;flex-direction:column}.scan-session-head .mini-btn{width:100%}}
 
 .workflow-notice{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem;margin-bottom:.75rem;padding:.75rem;border:1px solid #fcd34d;border-radius:.75rem;background:#fffbeb;color:#92400e;font-size:.8rem;line-height:1.5}.workflow-notice .mini-btn{min-height:40px}#homeBatchPicker label{display:block;font-size:.8rem;margin-bottom:.4rem}
+/* Bounded inventory lists and touch-friendly controls. */
+.inventory-pagination{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 0;font-size:13px}
+.inventory-pagination button:disabled{opacity:.45;cursor:default}
+@media(max-width:640px){input,select,textarea{font-size:16px!important}.mini-btn,.nav-item{min-height:44px}.batch-actions button{min-width:44px}}
